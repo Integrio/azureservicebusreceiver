@@ -14,6 +14,7 @@ import (
 	httpsprovider "go.opentelemetry.io/collector/confmap/provider/httpsprovider"
 	yamlprovider "go.opentelemetry.io/collector/confmap/provider/yamlprovider"
 	"go.opentelemetry.io/collector/otelcol"
+	_ "google.golang.org/genproto/googleapis/type/date"
 )
 
 func main() {

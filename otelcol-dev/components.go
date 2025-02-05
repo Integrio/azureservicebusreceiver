@@ -15,6 +15,7 @@ import (
 	prometheusexporter "github.com/open-telemetry/opentelemetry-collector-contrib/exporter/prometheusexporter"
 	batchprocessor "go.opentelemetry.io/collector/processor/batchprocessor"
 	otlpreceiver "go.opentelemetry.io/collector/receiver/otlpreceiver"
+	azureservicebus "github.com/Integrio/azureservicebusreceiver/azureservicebusreceiver"
 )
 
 func components() (otelcol.Factories, error) {
@@ -30,6 +31,7 @@ func components() (otelcol.Factories, error) {
 
 	factories.Receivers, err = receiver.MakeFactoryMap(
 		otlpreceiver.NewFactory(),
+		azureservicebus.NewFactory(),
 	)
 	if err != nil {
 		return otelcol.Factories{}, err
