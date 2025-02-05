@@ -62,13 +62,14 @@ func (s *serviceBusScraper) scrape(ctx context.Context) (pmetric.Metrics, error)
 	rb.SetServicebusNamespaceName(s.cfg.NamespaceFqdn)
 
 	s.scrapeQueues(ctx, scrapeErrors)
+	topics := s.scrapeTopics(ctx, scrapeErrors)
+	s.scrapeSubscriptions(ctx, topics, scrapeErrors)
 
-	return s.mb.Emit(metadata.WithResource(rb.Emit())), nil
+	return s.mb.Emit(metadata.WithResource(rb.Emit())), scrapeErrors.Combine()
 }
 
 func (s *serviceBusScraper) scrapeQueues(ctx context.Context, errors scrapererror.ScrapeErrors) {
 	pager := s.client.NewListQueuesRuntimePropertiesPager(nil)
-	now := pcommon.NewTimestampFromTime(time.Now())
 
 	for pager.More() {
 		page, err := pager.NextPage(ctx)
@@ -76,6 +77,8 @@ func (s *serviceBusScraper) scrapeQueues(ctx context.Context, errors scrapererro
 			errors.AddPartial(1, err)
 			continue
 		}
+
+		now := pcommon.NewTimestampFromTime(time.Now())
 		for _, queue := range page.QueueRuntimeProperties {
 			queueName := queue.QueueName
 			s.mb.RecordServicebusQueueCurrentSizeDataPoint(now, queue.SizeInBytes, queueName)
@@ -84,5 +87,49 @@ func (s *serviceBusScraper) scrapeQueues(ctx context.Context, errors scrapererro
 			s.mb.RecordServicebusQueueDeadletterMessagesDataPoint(now, int64(queue.DeadLetterMessageCount), queueName)
 		}
 
+	}
+}
+
+func (s *serviceBusScraper) scrapeTopics(ctx context.Context, errors scrapererror.ScrapeErrors) []string {
+	pager := s.client.NewListTopicsRuntimePropertiesPager(nil)
+	var topics []string
+
+	for pager.More() {
+		page, err := pager.NextPage(ctx)
+		if err != nil {
+			errors.AddPartial(1, err)
+			continue
+		}
+
+		now := pcommon.NewTimestampFromTime(time.Now())
+		for _, topic := range page.TopicRuntimeProperties {
+			topicName := topic.TopicName
+			s.mb.RecordServicebusTopicCurrentSizeDataPoint(now, topic.SizeInBytes, topicName)
+			s.mb.RecordServicebusTopicScheduledMessagesDataPoint(now, int64(topic.ScheduledMessageCount), topicName)
+			topics = append(topics, topicName)
+		}
+	}
+
+	return topics
+}
+
+func (s *serviceBusScraper) scrapeSubscriptions(ctx context.Context, topics []string, errors scrapererror.ScrapeErrors) {
+	for _, topic := range topics {
+		pager := s.client.NewListSubscriptionsRuntimePropertiesPager(topic, nil)
+
+		for pager.More() {
+			page, err := pager.NextPage(ctx)
+			if err != nil {
+				errors.AddPartial(1, err)
+				continue
+			}
+
+			now := pcommon.NewTimestampFromTime(time.Now())
+			for _, sub := range page.SubscriptionRuntimeProperties {
+				subName := sub.SubscriptionName
+				s.mb.RecordServicebusTopicSubscriptionActiveMessagesDataPoint(now, int64(sub.ActiveMessageCount), topic, subName)
+				s.mb.RecordServicebusTopicSubscriptionDeadletterMessagesDataPoint(now, int64(sub.ActiveMessageCount), topic, subName)
+			}
+		}
 	}
 }
