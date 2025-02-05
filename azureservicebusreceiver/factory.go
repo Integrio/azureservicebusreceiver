@@ -9,7 +9,6 @@ import (
 	"go.opentelemetry.io/collector/receiver"
 	"go.opentelemetry.io/collector/scraper"
 	"go.opentelemetry.io/collector/scraper/scraperhelper"
-	"strconv"
 	"time"
 )
 
@@ -36,7 +35,6 @@ func createDefaultConfig() component.Config {
 	return &Config{
 		ControllerConfig:     cfg,
 		MetricsBuilderConfig: metadata.DefaultMetricsBuilderConfig(),
-		Interval:             strconv.FormatInt(int64(defaultInterval), 10),
 	}
 }
 
