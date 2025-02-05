@@ -1,0 +1,30 @@
+﻿# Copy this file to "config.yaml" and replace values
+
+receivers:
+  otlp:
+    protocols:
+      grpc:
+        endpoint: 0.0.0.0:4317
+  azureservicebus:
+    namespace_fqdn: <REPLACE>
+    collection_interval: 1m
+
+
+processors:
+  batch:
+
+exporters:
+  debug:
+    verbosity: detailed
+  prometheus:
+    endpoint: "0.0.0.0:9464"  # Exposes metrics here
+
+service:
+  pipelines:
+    metrics:
+      receivers: [azureservicebus]
+      processors: [batch]
+      exporters: [prometheus, debug]
+  telemetry:
+    logs:
+      level: debug
