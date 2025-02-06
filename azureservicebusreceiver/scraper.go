@@ -128,7 +128,7 @@ func (s *serviceBusScraper) scrapeSubscriptions(ctx context.Context, topics []st
 			for _, sub := range page.SubscriptionRuntimeProperties {
 				subName := sub.SubscriptionName
 				s.mb.RecordServicebusTopicSubscriptionActiveMessagesDataPoint(now, int64(sub.ActiveMessageCount), topic, subName)
-				s.mb.RecordServicebusTopicSubscriptionDeadletterMessagesDataPoint(now, int64(sub.ActiveMessageCount), topic, subName)
+				s.mb.RecordServicebusTopicSubscriptionDeadletterMessagesDataPoint(now, int64(sub.DeadLetterMessageCount), topic, subName)
 			}
 		}
 	}
