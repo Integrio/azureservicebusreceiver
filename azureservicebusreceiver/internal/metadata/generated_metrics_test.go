@@ -70,43 +70,43 @@ func TestMetricsBuilder(t *testing.T) {
 
 			defaultMetricsCount++
 			allMetricsCount++
-			mb.RecordServicebusQueueActiveMessagesDataPoint(ts, 1, "servicebus.queue-val")
+			mb.RecordServicebusQueueActiveMessagesDataPoint(ts, 1, "queue-val")
 
 			defaultMetricsCount++
 			allMetricsCount++
-			mb.RecordServicebusQueueCurrentSizeDataPoint(ts, 1, "servicebus.queue-val")
+			mb.RecordServicebusQueueCurrentSizeDataPoint(ts, 1, "queue-val")
 
 			defaultMetricsCount++
 			allMetricsCount++
-			mb.RecordServicebusQueueDeadletterMessagesDataPoint(ts, 1, "servicebus.queue-val")
+			mb.RecordServicebusQueueDeadletterMessagesDataPoint(ts, 1, "queue-val")
 
 			defaultMetricsCount++
 			allMetricsCount++
-			mb.RecordServicebusQueueMaxSizeDataPoint(ts, 1, "servicebus.queue-val")
+			mb.RecordServicebusQueueMaxSizeDataPoint(ts, 1, "queue-val")
 
 			defaultMetricsCount++
 			allMetricsCount++
-			mb.RecordServicebusQueueScheduledMessagesDataPoint(ts, 1, "servicebus.queue-val")
+			mb.RecordServicebusQueueScheduledMessagesDataPoint(ts, 1, "queue-val")
 
 			defaultMetricsCount++
 			allMetricsCount++
-			mb.RecordServicebusTopicCurrentSizeDataPoint(ts, 1, "servicebus.topic-val")
+			mb.RecordServicebusTopicCurrentSizeDataPoint(ts, 1, "topic-val")
 
 			defaultMetricsCount++
 			allMetricsCount++
-			mb.RecordServicebusTopicMaxSizeDataPoint(ts, 1, "servicebus.topic-val")
+			mb.RecordServicebusTopicMaxSizeDataPoint(ts, 1, "topic-val")
 
 			defaultMetricsCount++
 			allMetricsCount++
-			mb.RecordServicebusTopicScheduledMessagesDataPoint(ts, 1, "servicebus.topic-val")
+			mb.RecordServicebusTopicScheduledMessagesDataPoint(ts, 1, "topic-val")
 
 			defaultMetricsCount++
 			allMetricsCount++
-			mb.RecordServicebusTopicSubscriptionActiveMessagesDataPoint(ts, 1, "servicebus.topic-val", "servicebus.topic.subscription-val")
+			mb.RecordServicebusTopicSubscriptionActiveMessagesDataPoint(ts, 1, "topic-val", "subscription-val")
 
 			defaultMetricsCount++
 			allMetricsCount++
-			mb.RecordServicebusTopicSubscriptionDeadletterMessagesDataPoint(ts, 1, "servicebus.topic-val", "servicebus.topic.subscription-val")
+			mb.RecordServicebusTopicSubscriptionDeadletterMessagesDataPoint(ts, 1, "topic-val", "subscription-val")
 
 			rb := mb.NewResourceBuilder()
 			rb.SetServicebusNamespaceName("servicebus.namespace.name-val")
@@ -144,9 +144,9 @@ func TestMetricsBuilder(t *testing.T) {
 					assert.Equal(t, ts, dp.Timestamp())
 					assert.Equal(t, pmetric.NumberDataPointValueTypeInt, dp.ValueType())
 					assert.Equal(t, int64(1), dp.IntValue())
-					attrVal, ok := dp.Attributes().Get("servicebus.queue")
+					attrVal, ok := dp.Attributes().Get("queue")
 					assert.True(t, ok)
-					assert.EqualValues(t, "servicebus.queue-val", attrVal.Str())
+					assert.EqualValues(t, "queue-val", attrVal.Str())
 				case "servicebus.queue.current_size":
 					assert.False(t, validatedMetrics["servicebus.queue.current_size"], "Found a duplicate in the metrics slice: servicebus.queue.current_size")
 					validatedMetrics["servicebus.queue.current_size"] = true
@@ -159,9 +159,9 @@ func TestMetricsBuilder(t *testing.T) {
 					assert.Equal(t, ts, dp.Timestamp())
 					assert.Equal(t, pmetric.NumberDataPointValueTypeInt, dp.ValueType())
 					assert.Equal(t, int64(1), dp.IntValue())
-					attrVal, ok := dp.Attributes().Get("servicebus.queue")
+					attrVal, ok := dp.Attributes().Get("queue")
 					assert.True(t, ok)
-					assert.EqualValues(t, "servicebus.queue-val", attrVal.Str())
+					assert.EqualValues(t, "queue-val", attrVal.Str())
 				case "servicebus.queue.deadletter_messages":
 					assert.False(t, validatedMetrics["servicebus.queue.deadletter_messages"], "Found a duplicate in the metrics slice: servicebus.queue.deadletter_messages")
 					validatedMetrics["servicebus.queue.deadletter_messages"] = true
@@ -174,9 +174,9 @@ func TestMetricsBuilder(t *testing.T) {
 					assert.Equal(t, ts, dp.Timestamp())
 					assert.Equal(t, pmetric.NumberDataPointValueTypeInt, dp.ValueType())
 					assert.Equal(t, int64(1), dp.IntValue())
-					attrVal, ok := dp.Attributes().Get("servicebus.queue")
+					attrVal, ok := dp.Attributes().Get("queue")
 					assert.True(t, ok)
-					assert.EqualValues(t, "servicebus.queue-val", attrVal.Str())
+					assert.EqualValues(t, "queue-val", attrVal.Str())
 				case "servicebus.queue.max_size":
 					assert.False(t, validatedMetrics["servicebus.queue.max_size"], "Found a duplicate in the metrics slice: servicebus.queue.max_size")
 					validatedMetrics["servicebus.queue.max_size"] = true
@@ -189,9 +189,9 @@ func TestMetricsBuilder(t *testing.T) {
 					assert.Equal(t, ts, dp.Timestamp())
 					assert.Equal(t, pmetric.NumberDataPointValueTypeInt, dp.ValueType())
 					assert.Equal(t, int64(1), dp.IntValue())
-					attrVal, ok := dp.Attributes().Get("servicebus.queue")
+					attrVal, ok := dp.Attributes().Get("queue")
 					assert.True(t, ok)
-					assert.EqualValues(t, "servicebus.queue-val", attrVal.Str())
+					assert.EqualValues(t, "queue-val", attrVal.Str())
 				case "servicebus.queue.scheduled_messages":
 					assert.False(t, validatedMetrics["servicebus.queue.scheduled_messages"], "Found a duplicate in the metrics slice: servicebus.queue.scheduled_messages")
 					validatedMetrics["servicebus.queue.scheduled_messages"] = true
@@ -204,9 +204,9 @@ func TestMetricsBuilder(t *testing.T) {
 					assert.Equal(t, ts, dp.Timestamp())
 					assert.Equal(t, pmetric.NumberDataPointValueTypeInt, dp.ValueType())
 					assert.Equal(t, int64(1), dp.IntValue())
-					attrVal, ok := dp.Attributes().Get("servicebus.queue")
+					attrVal, ok := dp.Attributes().Get("queue")
 					assert.True(t, ok)
-					assert.EqualValues(t, "servicebus.queue-val", attrVal.Str())
+					assert.EqualValues(t, "queue-val", attrVal.Str())
 				case "servicebus.topic.current_size":
 					assert.False(t, validatedMetrics["servicebus.topic.current_size"], "Found a duplicate in the metrics slice: servicebus.topic.current_size")
 					validatedMetrics["servicebus.topic.current_size"] = true
@@ -219,9 +219,9 @@ func TestMetricsBuilder(t *testing.T) {
 					assert.Equal(t, ts, dp.Timestamp())
 					assert.Equal(t, pmetric.NumberDataPointValueTypeInt, dp.ValueType())
 					assert.Equal(t, int64(1), dp.IntValue())
-					attrVal, ok := dp.Attributes().Get("servicebus.topic")
+					attrVal, ok := dp.Attributes().Get("topic")
 					assert.True(t, ok)
-					assert.EqualValues(t, "servicebus.topic-val", attrVal.Str())
+					assert.EqualValues(t, "topic-val", attrVal.Str())
 				case "servicebus.topic.max_size":
 					assert.False(t, validatedMetrics["servicebus.topic.max_size"], "Found a duplicate in the metrics slice: servicebus.topic.max_size")
 					validatedMetrics["servicebus.topic.max_size"] = true
@@ -234,9 +234,9 @@ func TestMetricsBuilder(t *testing.T) {
 					assert.Equal(t, ts, dp.Timestamp())
 					assert.Equal(t, pmetric.NumberDataPointValueTypeInt, dp.ValueType())
 					assert.Equal(t, int64(1), dp.IntValue())
-					attrVal, ok := dp.Attributes().Get("servicebus.topic")
+					attrVal, ok := dp.Attributes().Get("topic")
 					assert.True(t, ok)
-					assert.EqualValues(t, "servicebus.topic-val", attrVal.Str())
+					assert.EqualValues(t, "topic-val", attrVal.Str())
 				case "servicebus.topic.scheduled_messages":
 					assert.False(t, validatedMetrics["servicebus.topic.scheduled_messages"], "Found a duplicate in the metrics slice: servicebus.topic.scheduled_messages")
 					validatedMetrics["servicebus.topic.scheduled_messages"] = true
@@ -249,9 +249,9 @@ func TestMetricsBuilder(t *testing.T) {
 					assert.Equal(t, ts, dp.Timestamp())
 					assert.Equal(t, pmetric.NumberDataPointValueTypeInt, dp.ValueType())
 					assert.Equal(t, int64(1), dp.IntValue())
-					attrVal, ok := dp.Attributes().Get("servicebus.topic")
+					attrVal, ok := dp.Attributes().Get("topic")
 					assert.True(t, ok)
-					assert.EqualValues(t, "servicebus.topic-val", attrVal.Str())
+					assert.EqualValues(t, "topic-val", attrVal.Str())
 				case "servicebus.topic.subscription.active_messages":
 					assert.False(t, validatedMetrics["servicebus.topic.subscription.active_messages"], "Found a duplicate in the metrics slice: servicebus.topic.subscription.active_messages")
 					validatedMetrics["servicebus.topic.subscription.active_messages"] = true
@@ -264,12 +264,12 @@ func TestMetricsBuilder(t *testing.T) {
 					assert.Equal(t, ts, dp.Timestamp())
 					assert.Equal(t, pmetric.NumberDataPointValueTypeInt, dp.ValueType())
 					assert.Equal(t, int64(1), dp.IntValue())
-					attrVal, ok := dp.Attributes().Get("servicebus.topic")
+					attrVal, ok := dp.Attributes().Get("topic")
 					assert.True(t, ok)
-					assert.EqualValues(t, "servicebus.topic-val", attrVal.Str())
-					attrVal, ok = dp.Attributes().Get("servicebus.topic.subscription")
+					assert.EqualValues(t, "topic-val", attrVal.Str())
+					attrVal, ok = dp.Attributes().Get("subscription")
 					assert.True(t, ok)
-					assert.EqualValues(t, "servicebus.topic.subscription-val", attrVal.Str())
+					assert.EqualValues(t, "subscription-val", attrVal.Str())
 				case "servicebus.topic.subscription.deadletter_messages":
 					assert.False(t, validatedMetrics["servicebus.topic.subscription.deadletter_messages"], "Found a duplicate in the metrics slice: servicebus.topic.subscription.deadletter_messages")
 					validatedMetrics["servicebus.topic.subscription.deadletter_messages"] = true
@@ -282,12 +282,12 @@ func TestMetricsBuilder(t *testing.T) {
 					assert.Equal(t, ts, dp.Timestamp())
 					assert.Equal(t, pmetric.NumberDataPointValueTypeInt, dp.ValueType())
 					assert.Equal(t, int64(1), dp.IntValue())
-					attrVal, ok := dp.Attributes().Get("servicebus.topic")
+					attrVal, ok := dp.Attributes().Get("topic")
 					assert.True(t, ok)
-					assert.EqualValues(t, "servicebus.topic-val", attrVal.Str())
-					attrVal, ok = dp.Attributes().Get("servicebus.topic.subscription")
+					assert.EqualValues(t, "topic-val", attrVal.Str())
+					attrVal, ok = dp.Attributes().Get("subscription")
 					assert.True(t, ok)
-					assert.EqualValues(t, "servicebus.topic.subscription-val", attrVal.Str())
+					assert.EqualValues(t, "subscription-val", attrVal.Str())
 				}
 			}
 		})

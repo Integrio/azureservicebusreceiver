@@ -3,10 +3,10 @@
 package metadata
 
 import (
+	"go.opentelemetry.io/collector/filter"
 	"time"
 
 	"go.opentelemetry.io/collector/component"
-	"go.opentelemetry.io/collector/filter"
 	"go.opentelemetry.io/collector/pdata/pcommon"
 	"go.opentelemetry.io/collector/pdata/pmetric"
 	"go.opentelemetry.io/collector/receiver"
@@ -27,7 +27,7 @@ func (m *metricServicebusQueueActiveMessages) init() {
 	m.data.Gauge().DataPoints().EnsureCapacity(m.capacity)
 }
 
-func (m *metricServicebusQueueActiveMessages) recordDataPoint(start pcommon.Timestamp, ts pcommon.Timestamp, val int64, servicebusQueueAttributeValue string) {
+func (m *metricServicebusQueueActiveMessages) recordDataPoint(start pcommon.Timestamp, ts pcommon.Timestamp, val int64, queueAttributeValue string) {
 	if !m.config.Enabled {
 		return
 	}
@@ -35,7 +35,7 @@ func (m *metricServicebusQueueActiveMessages) recordDataPoint(start pcommon.Time
 	dp.SetStartTimestamp(start)
 	dp.SetTimestamp(ts)
 	dp.SetIntValue(val)
-	dp.Attributes().PutStr("servicebus.queue", servicebusQueueAttributeValue)
+	dp.Attributes().PutStr("queue", queueAttributeValue)
 }
 
 // updateCapacity saves max length of data point slices that will be used for the slice capacity.
@@ -78,7 +78,7 @@ func (m *metricServicebusQueueCurrentSize) init() {
 	m.data.Gauge().DataPoints().EnsureCapacity(m.capacity)
 }
 
-func (m *metricServicebusQueueCurrentSize) recordDataPoint(start pcommon.Timestamp, ts pcommon.Timestamp, val int64, servicebusQueueAttributeValue string) {
+func (m *metricServicebusQueueCurrentSize) recordDataPoint(start pcommon.Timestamp, ts pcommon.Timestamp, val int64, queueAttributeValue string) {
 	if !m.config.Enabled {
 		return
 	}
@@ -86,7 +86,7 @@ func (m *metricServicebusQueueCurrentSize) recordDataPoint(start pcommon.Timesta
 	dp.SetStartTimestamp(start)
 	dp.SetTimestamp(ts)
 	dp.SetIntValue(val)
-	dp.Attributes().PutStr("servicebus.queue", servicebusQueueAttributeValue)
+	dp.Attributes().PutStr("queue", queueAttributeValue)
 }
 
 // updateCapacity saves max length of data point slices that will be used for the slice capacity.
@@ -129,7 +129,7 @@ func (m *metricServicebusQueueDeadletterMessages) init() {
 	m.data.Gauge().DataPoints().EnsureCapacity(m.capacity)
 }
 
-func (m *metricServicebusQueueDeadletterMessages) recordDataPoint(start pcommon.Timestamp, ts pcommon.Timestamp, val int64, servicebusQueueAttributeValue string) {
+func (m *metricServicebusQueueDeadletterMessages) recordDataPoint(start pcommon.Timestamp, ts pcommon.Timestamp, val int64, queueAttributeValue string) {
 	if !m.config.Enabled {
 		return
 	}
@@ -137,7 +137,7 @@ func (m *metricServicebusQueueDeadletterMessages) recordDataPoint(start pcommon.
 	dp.SetStartTimestamp(start)
 	dp.SetTimestamp(ts)
 	dp.SetIntValue(val)
-	dp.Attributes().PutStr("servicebus.queue", servicebusQueueAttributeValue)
+	dp.Attributes().PutStr("queue", queueAttributeValue)
 }
 
 // updateCapacity saves max length of data point slices that will be used for the slice capacity.
@@ -180,7 +180,7 @@ func (m *metricServicebusQueueMaxSize) init() {
 	m.data.Gauge().DataPoints().EnsureCapacity(m.capacity)
 }
 
-func (m *metricServicebusQueueMaxSize) recordDataPoint(start pcommon.Timestamp, ts pcommon.Timestamp, val int64, servicebusQueueAttributeValue string) {
+func (m *metricServicebusQueueMaxSize) recordDataPoint(start pcommon.Timestamp, ts pcommon.Timestamp, val int64, queueAttributeValue string) {
 	if !m.config.Enabled {
 		return
 	}
@@ -188,7 +188,7 @@ func (m *metricServicebusQueueMaxSize) recordDataPoint(start pcommon.Timestamp, 
 	dp.SetStartTimestamp(start)
 	dp.SetTimestamp(ts)
 	dp.SetIntValue(val)
-	dp.Attributes().PutStr("servicebus.queue", servicebusQueueAttributeValue)
+	dp.Attributes().PutStr("queue", queueAttributeValue)
 }
 
 // updateCapacity saves max length of data point slices that will be used for the slice capacity.
@@ -231,7 +231,7 @@ func (m *metricServicebusQueueScheduledMessages) init() {
 	m.data.Gauge().DataPoints().EnsureCapacity(m.capacity)
 }
 
-func (m *metricServicebusQueueScheduledMessages) recordDataPoint(start pcommon.Timestamp, ts pcommon.Timestamp, val int64, servicebusQueueAttributeValue string) {
+func (m *metricServicebusQueueScheduledMessages) recordDataPoint(start pcommon.Timestamp, ts pcommon.Timestamp, val int64, queueAttributeValue string) {
 	if !m.config.Enabled {
 		return
 	}
@@ -239,7 +239,7 @@ func (m *metricServicebusQueueScheduledMessages) recordDataPoint(start pcommon.T
 	dp.SetStartTimestamp(start)
 	dp.SetTimestamp(ts)
 	dp.SetIntValue(val)
-	dp.Attributes().PutStr("servicebus.queue", servicebusQueueAttributeValue)
+	dp.Attributes().PutStr("queue", queueAttributeValue)
 }
 
 // updateCapacity saves max length of data point slices that will be used for the slice capacity.
@@ -282,7 +282,7 @@ func (m *metricServicebusTopicCurrentSize) init() {
 	m.data.Gauge().DataPoints().EnsureCapacity(m.capacity)
 }
 
-func (m *metricServicebusTopicCurrentSize) recordDataPoint(start pcommon.Timestamp, ts pcommon.Timestamp, val int64, servicebusTopicAttributeValue string) {
+func (m *metricServicebusTopicCurrentSize) recordDataPoint(start pcommon.Timestamp, ts pcommon.Timestamp, val int64, topicAttributeValue string) {
 	if !m.config.Enabled {
 		return
 	}
@@ -290,7 +290,7 @@ func (m *metricServicebusTopicCurrentSize) recordDataPoint(start pcommon.Timesta
 	dp.SetStartTimestamp(start)
 	dp.SetTimestamp(ts)
 	dp.SetIntValue(val)
-	dp.Attributes().PutStr("servicebus.topic", servicebusTopicAttributeValue)
+	dp.Attributes().PutStr("topic", topicAttributeValue)
 }
 
 // updateCapacity saves max length of data point slices that will be used for the slice capacity.
@@ -333,7 +333,7 @@ func (m *metricServicebusTopicMaxSize) init() {
 	m.data.Gauge().DataPoints().EnsureCapacity(m.capacity)
 }
 
-func (m *metricServicebusTopicMaxSize) recordDataPoint(start pcommon.Timestamp, ts pcommon.Timestamp, val int64, servicebusTopicAttributeValue string) {
+func (m *metricServicebusTopicMaxSize) recordDataPoint(start pcommon.Timestamp, ts pcommon.Timestamp, val int64, topicAttributeValue string) {
 	if !m.config.Enabled {
 		return
 	}
@@ -341,7 +341,7 @@ func (m *metricServicebusTopicMaxSize) recordDataPoint(start pcommon.Timestamp, 
 	dp.SetStartTimestamp(start)
 	dp.SetTimestamp(ts)
 	dp.SetIntValue(val)
-	dp.Attributes().PutStr("servicebus.topic", servicebusTopicAttributeValue)
+	dp.Attributes().PutStr("topic", topicAttributeValue)
 }
 
 // updateCapacity saves max length of data point slices that will be used for the slice capacity.
@@ -384,7 +384,7 @@ func (m *metricServicebusTopicScheduledMessages) init() {
 	m.data.Gauge().DataPoints().EnsureCapacity(m.capacity)
 }
 
-func (m *metricServicebusTopicScheduledMessages) recordDataPoint(start pcommon.Timestamp, ts pcommon.Timestamp, val int64, servicebusTopicAttributeValue string) {
+func (m *metricServicebusTopicScheduledMessages) recordDataPoint(start pcommon.Timestamp, ts pcommon.Timestamp, val int64, topicAttributeValue string) {
 	if !m.config.Enabled {
 		return
 	}
@@ -392,7 +392,7 @@ func (m *metricServicebusTopicScheduledMessages) recordDataPoint(start pcommon.T
 	dp.SetStartTimestamp(start)
 	dp.SetTimestamp(ts)
 	dp.SetIntValue(val)
-	dp.Attributes().PutStr("servicebus.topic", servicebusTopicAttributeValue)
+	dp.Attributes().PutStr("topic", topicAttributeValue)
 }
 
 // updateCapacity saves max length of data point slices that will be used for the slice capacity.
@@ -435,7 +435,7 @@ func (m *metricServicebusTopicSubscriptionActiveMessages) init() {
 	m.data.Gauge().DataPoints().EnsureCapacity(m.capacity)
 }
 
-func (m *metricServicebusTopicSubscriptionActiveMessages) recordDataPoint(start pcommon.Timestamp, ts pcommon.Timestamp, val int64, servicebusTopicAttributeValue string, servicebusTopicSubscriptionAttributeValue string) {
+func (m *metricServicebusTopicSubscriptionActiveMessages) recordDataPoint(start pcommon.Timestamp, ts pcommon.Timestamp, val int64, topicAttributeValue string, subscriptionAttributeValue string) {
 	if !m.config.Enabled {
 		return
 	}
@@ -443,8 +443,8 @@ func (m *metricServicebusTopicSubscriptionActiveMessages) recordDataPoint(start 
 	dp.SetStartTimestamp(start)
 	dp.SetTimestamp(ts)
 	dp.SetIntValue(val)
-	dp.Attributes().PutStr("servicebus.topic", servicebusTopicAttributeValue)
-	dp.Attributes().PutStr("servicebus.topic.subscription", servicebusTopicSubscriptionAttributeValue)
+	dp.Attributes().PutStr("topic", topicAttributeValue)
+	dp.Attributes().PutStr("subscription", subscriptionAttributeValue)
 }
 
 // updateCapacity saves max length of data point slices that will be used for the slice capacity.
@@ -487,7 +487,7 @@ func (m *metricServicebusTopicSubscriptionDeadletterMessages) init() {
 	m.data.Gauge().DataPoints().EnsureCapacity(m.capacity)
 }
 
-func (m *metricServicebusTopicSubscriptionDeadletterMessages) recordDataPoint(start pcommon.Timestamp, ts pcommon.Timestamp, val int64, servicebusTopicAttributeValue string, servicebusTopicSubscriptionAttributeValue string) {
+func (m *metricServicebusTopicSubscriptionDeadletterMessages) recordDataPoint(start pcommon.Timestamp, ts pcommon.Timestamp, val int64, topicAttributeValue string, subscriptionAttributeValue string) {
 	if !m.config.Enabled {
 		return
 	}
@@ -495,8 +495,8 @@ func (m *metricServicebusTopicSubscriptionDeadletterMessages) recordDataPoint(st
 	dp.SetStartTimestamp(start)
 	dp.SetTimestamp(ts)
 	dp.SetIntValue(val)
-	dp.Attributes().PutStr("servicebus.topic", servicebusTopicAttributeValue)
-	dp.Attributes().PutStr("servicebus.topic.subscription", servicebusTopicSubscriptionAttributeValue)
+	dp.Attributes().PutStr("topic", topicAttributeValue)
+	dp.Attributes().PutStr("subscription", subscriptionAttributeValue)
 }
 
 // updateCapacity saves max length of data point slices that will be used for the slice capacity.
@@ -699,53 +699,53 @@ func (mb *MetricsBuilder) Emit(options ...ResourceMetricsOption) pmetric.Metrics
 }
 
 // RecordServicebusQueueActiveMessagesDataPoint adds a data point to servicebus.queue.active_messages metric.
-func (mb *MetricsBuilder) RecordServicebusQueueActiveMessagesDataPoint(ts pcommon.Timestamp, val int64, servicebusQueueAttributeValue string) {
-	mb.metricServicebusQueueActiveMessages.recordDataPoint(mb.startTime, ts, val, servicebusQueueAttributeValue)
+func (mb *MetricsBuilder) RecordServicebusQueueActiveMessagesDataPoint(ts pcommon.Timestamp, val int64, queueAttributeValue string) {
+	mb.metricServicebusQueueActiveMessages.recordDataPoint(mb.startTime, ts, val, queueAttributeValue)
 }
 
 // RecordServicebusQueueCurrentSizeDataPoint adds a data point to servicebus.queue.current_size metric.
-func (mb *MetricsBuilder) RecordServicebusQueueCurrentSizeDataPoint(ts pcommon.Timestamp, val int64, servicebusQueueAttributeValue string) {
-	mb.metricServicebusQueueCurrentSize.recordDataPoint(mb.startTime, ts, val, servicebusQueueAttributeValue)
+func (mb *MetricsBuilder) RecordServicebusQueueCurrentSizeDataPoint(ts pcommon.Timestamp, val int64, queueAttributeValue string) {
+	mb.metricServicebusQueueCurrentSize.recordDataPoint(mb.startTime, ts, val, queueAttributeValue)
 }
 
 // RecordServicebusQueueDeadletterMessagesDataPoint adds a data point to servicebus.queue.deadletter_messages metric.
-func (mb *MetricsBuilder) RecordServicebusQueueDeadletterMessagesDataPoint(ts pcommon.Timestamp, val int64, servicebusQueueAttributeValue string) {
-	mb.metricServicebusQueueDeadletterMessages.recordDataPoint(mb.startTime, ts, val, servicebusQueueAttributeValue)
+func (mb *MetricsBuilder) RecordServicebusQueueDeadletterMessagesDataPoint(ts pcommon.Timestamp, val int64, queueAttributeValue string) {
+	mb.metricServicebusQueueDeadletterMessages.recordDataPoint(mb.startTime, ts, val, queueAttributeValue)
 }
 
 // RecordServicebusQueueMaxSizeDataPoint adds a data point to servicebus.queue.max_size metric.
-func (mb *MetricsBuilder) RecordServicebusQueueMaxSizeDataPoint(ts pcommon.Timestamp, val int64, servicebusQueueAttributeValue string) {
-	mb.metricServicebusQueueMaxSize.recordDataPoint(mb.startTime, ts, val, servicebusQueueAttributeValue)
+func (mb *MetricsBuilder) RecordServicebusQueueMaxSizeDataPoint(ts pcommon.Timestamp, val int64, queueAttributeValue string) {
+	mb.metricServicebusQueueMaxSize.recordDataPoint(mb.startTime, ts, val, queueAttributeValue)
 }
 
 // RecordServicebusQueueScheduledMessagesDataPoint adds a data point to servicebus.queue.scheduled_messages metric.
-func (mb *MetricsBuilder) RecordServicebusQueueScheduledMessagesDataPoint(ts pcommon.Timestamp, val int64, servicebusQueueAttributeValue string) {
-	mb.metricServicebusQueueScheduledMessages.recordDataPoint(mb.startTime, ts, val, servicebusQueueAttributeValue)
+func (mb *MetricsBuilder) RecordServicebusQueueScheduledMessagesDataPoint(ts pcommon.Timestamp, val int64, queueAttributeValue string) {
+	mb.metricServicebusQueueScheduledMessages.recordDataPoint(mb.startTime, ts, val, queueAttributeValue)
 }
 
 // RecordServicebusTopicCurrentSizeDataPoint adds a data point to servicebus.topic.current_size metric.
-func (mb *MetricsBuilder) RecordServicebusTopicCurrentSizeDataPoint(ts pcommon.Timestamp, val int64, servicebusTopicAttributeValue string) {
-	mb.metricServicebusTopicCurrentSize.recordDataPoint(mb.startTime, ts, val, servicebusTopicAttributeValue)
+func (mb *MetricsBuilder) RecordServicebusTopicCurrentSizeDataPoint(ts pcommon.Timestamp, val int64, topicAttributeValue string) {
+	mb.metricServicebusTopicCurrentSize.recordDataPoint(mb.startTime, ts, val, topicAttributeValue)
 }
 
 // RecordServicebusTopicMaxSizeDataPoint adds a data point to servicebus.topic.max_size metric.
-func (mb *MetricsBuilder) RecordServicebusTopicMaxSizeDataPoint(ts pcommon.Timestamp, val int64, servicebusTopicAttributeValue string) {
-	mb.metricServicebusTopicMaxSize.recordDataPoint(mb.startTime, ts, val, servicebusTopicAttributeValue)
+func (mb *MetricsBuilder) RecordServicebusTopicMaxSizeDataPoint(ts pcommon.Timestamp, val int64, topicAttributeValue string) {
+	mb.metricServicebusTopicMaxSize.recordDataPoint(mb.startTime, ts, val, topicAttributeValue)
 }
 
 // RecordServicebusTopicScheduledMessagesDataPoint adds a data point to servicebus.topic.scheduled_messages metric.
-func (mb *MetricsBuilder) RecordServicebusTopicScheduledMessagesDataPoint(ts pcommon.Timestamp, val int64, servicebusTopicAttributeValue string) {
-	mb.metricServicebusTopicScheduledMessages.recordDataPoint(mb.startTime, ts, val, servicebusTopicAttributeValue)
+func (mb *MetricsBuilder) RecordServicebusTopicScheduledMessagesDataPoint(ts pcommon.Timestamp, val int64, topicAttributeValue string) {
+	mb.metricServicebusTopicScheduledMessages.recordDataPoint(mb.startTime, ts, val, topicAttributeValue)
 }
 
 // RecordServicebusTopicSubscriptionActiveMessagesDataPoint adds a data point to servicebus.topic.subscription.active_messages metric.
-func (mb *MetricsBuilder) RecordServicebusTopicSubscriptionActiveMessagesDataPoint(ts pcommon.Timestamp, val int64, servicebusTopicAttributeValue string, servicebusTopicSubscriptionAttributeValue string) {
-	mb.metricServicebusTopicSubscriptionActiveMessages.recordDataPoint(mb.startTime, ts, val, servicebusTopicAttributeValue, servicebusTopicSubscriptionAttributeValue)
+func (mb *MetricsBuilder) RecordServicebusTopicSubscriptionActiveMessagesDataPoint(ts pcommon.Timestamp, val int64, topicAttributeValue string, subscriptionAttributeValue string) {
+	mb.metricServicebusTopicSubscriptionActiveMessages.recordDataPoint(mb.startTime, ts, val, topicAttributeValue, subscriptionAttributeValue)
 }
 
 // RecordServicebusTopicSubscriptionDeadletterMessagesDataPoint adds a data point to servicebus.topic.subscription.deadletter_messages metric.
-func (mb *MetricsBuilder) RecordServicebusTopicSubscriptionDeadletterMessagesDataPoint(ts pcommon.Timestamp, val int64, servicebusTopicAttributeValue string, servicebusTopicSubscriptionAttributeValue string) {
-	mb.metricServicebusTopicSubscriptionDeadletterMessages.recordDataPoint(mb.startTime, ts, val, servicebusTopicAttributeValue, servicebusTopicSubscriptionAttributeValue)
+func (mb *MetricsBuilder) RecordServicebusTopicSubscriptionDeadletterMessagesDataPoint(ts pcommon.Timestamp, val int64, topicAttributeValue string, subscriptionAttributeValue string) {
+	mb.metricServicebusTopicSubscriptionDeadletterMessages.recordDataPoint(mb.startTime, ts, val, topicAttributeValue, subscriptionAttributeValue)
 }
 
 // Reset resets metrics builder to its initial state. It should be used when external metrics source is restarted,

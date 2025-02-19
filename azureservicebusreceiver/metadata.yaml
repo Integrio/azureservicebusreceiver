@@ -12,15 +12,15 @@ resource_attributes:
     type: string
 
 attributes:
-  servicebus.topic:
+  topic:
     description: The name of Service Bus topic
     type: string
     enabled: true
-  servicebus.topic.subscription:
+  subscription:
     description: The name of the Service Bus topic subscription
     type: string
     enabled: true
-  servicebus.queue:
+  queue:
     description: The name of the Service Bus queue
     type: string
     enabled: true
@@ -32,67 +32,67 @@ metrics:
     gauge:
       value_type: int
     enabled: true
-    attributes: [servicebus.topic]
+    attributes: [topic]
   servicebus.topic.max_size:
     description: The max size of the Service Bus topic in bytes
     unit: "{bytes}"
     gauge:
       value_type: int
     enabled: true
-    attributes: [servicebus.topic]
+    attributes: [topic]
   servicebus.topic.current_size:
     description: The current size of the Service Bus topic in bytes
     unit: "{bytes}"
     gauge:
       value_type: int
     enabled: true
-    attributes: [servicebus.topic]
+    attributes: [topic]
   servicebus.topic.subscription.active_messages:
     description: The number of active messages on the Service Bus topic subscription
     unit: "{messages}"
     gauge:
       value_type: int
     enabled: true
-    attributes: [servicebus.topic, servicebus.topic.subscription]
+    attributes: [topic, subscription]
   servicebus.topic.subscription.deadletter_messages:
     description: The number of deadletter messages on the Service Bus topic subscription
     unit: "{messages}"
     gauge:
       value_type: int
     enabled: true
-    attributes: [servicebus.topic, servicebus.topic.subscription]
+    attributes: [topic, subscription]
   servicebus.queue.scheduled_messages:
     description: The number of scheduled messages on the Service Bus queue
     unit: "{messages}"
     gauge:
       value_type: int
     enabled: true
-    attributes: [servicebus.queue]
+    attributes: [queue]
   servicebus.queue.max_size:
     description: The max size of the Service Bus queue in bytes
     unit: "{bytes}"
     gauge:
       value_type: int
     enabled: true
-    attributes: [servicebus.queue]
+    attributes: [queue]
   servicebus.queue.current_size:
     description: The current size of the Service Bus queue in bytes
     unit: "{bytes}"
     gauge:
       value_type: int
     enabled: true
-    attributes: [servicebus.queue]
+    attributes: [queue]
   servicebus.queue.active_messages:
     description: The number of active messages on the Service Bus queue
     unit: "{messages}"
     gauge:
       value_type: int
     enabled: true
-    attributes: [servicebus.queue]
+    attributes: [queue]
   servicebus.queue.deadletter_messages:
     description: The number of deadletter messages on the Service Bus queue
     unit: "{messages}"
     gauge:
       value_type: int
     enabled: true
-    attributes: [servicebus.queue]
+    attributes: [queue]

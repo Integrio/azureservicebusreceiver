@@ -13,12 +13,14 @@ import (
 )
 
 var (
-	typeStr = component.MustNewType("azureservicebus")
+	typeStr = component.MustNewType("servicebus")
 )
 
 const (
-	defaultInterval = 1 * time.Minute
+	defaultInterval = 5 * time.Minute
 )
+
+var errInvalidConfig = errors.New("config was not an azure servicebus receiver config")
 
 // NewFactory creates a factory for azureservicebus receiver.
 func NewFactory() receiver.Factory {
@@ -31,6 +33,7 @@ func NewFactory() receiver.Factory {
 func createDefaultConfig() component.Config {
 	cfg := scraperhelper.NewDefaultControllerConfig()
 	cfg.CollectionInterval = defaultInterval
+	cfg.InitialDelay = time.Second
 
 	return &Config{
 		ControllerConfig:     cfg,
@@ -41,7 +44,7 @@ func createDefaultConfig() component.Config {
 func createMetricsReceiver(_ context.Context, params receiver.Settings, conf component.Config, consumer consumer.Metrics) (receiver.Metrics, error) {
 	cfg, ok := conf.(*Config)
 	if !ok {
-		return nil, errors.New("bad config")
+		return nil, errInvalidConfig
 	}
 
 	serviceBusScraper := newScraper(params.Logger, cfg, params)

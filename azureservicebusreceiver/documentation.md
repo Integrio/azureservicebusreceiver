@@ -24,7 +24,7 @@ The number of active messages on the Service Bus queue
 
 | Name | Description | Values |
 | ---- | ----------- | ------ |
-| servicebus.queue | The name of the Service Bus queue | Any Str |
+| queue | The name of the Service Bus queue | Any Str |
 
 ### servicebus.queue.current_size
 
@@ -38,7 +38,7 @@ The current size of the Service Bus queue in bytes
 
 | Name | Description | Values |
 | ---- | ----------- | ------ |
-| servicebus.queue | The name of the Service Bus queue | Any Str |
+| queue | The name of the Service Bus queue | Any Str |
 
 ### servicebus.queue.deadletter_messages
 
@@ -52,7 +52,7 @@ The number of deadletter messages on the Service Bus queue
 
 | Name | Description | Values |
 | ---- | ----------- | ------ |
-| servicebus.queue | The name of the Service Bus queue | Any Str |
+| queue | The name of the Service Bus queue | Any Str |
 
 ### servicebus.queue.max_size
 
@@ -66,7 +66,7 @@ The max size of the Service Bus queue in bytes
 
 | Name | Description | Values |
 | ---- | ----------- | ------ |
-| servicebus.queue | The name of the Service Bus queue | Any Str |
+| queue | The name of the Service Bus queue | Any Str |
 
 ### servicebus.queue.scheduled_messages
 
@@ -80,7 +80,7 @@ The number of scheduled messages on the Service Bus queue
 
 | Name | Description | Values |
 | ---- | ----------- | ------ |
-| servicebus.queue | The name of the Service Bus queue | Any Str |
+| queue | The name of the Service Bus queue | Any Str |
 
 ### servicebus.topic.current_size
 
@@ -94,7 +94,7 @@ The current size of the Service Bus topic in bytes
 
 | Name | Description | Values |
 | ---- | ----------- | ------ |
-| servicebus.topic | The name of Service Bus topic | Any Str |
+| topic | The name of Service Bus topic | Any Str |
 
 ### servicebus.topic.max_size
 
@@ -108,7 +108,7 @@ The max size of the Service Bus topic in bytes
 
 | Name | Description | Values |
 | ---- | ----------- | ------ |
-| servicebus.topic | The name of Service Bus topic | Any Str |
+| topic | The name of Service Bus topic | Any Str |
 
 ### servicebus.topic.scheduled_messages
 
@@ -122,7 +122,7 @@ The number of scheduled messages on the Service Bus topic
 
 | Name | Description | Values |
 | ---- | ----------- | ------ |
-| servicebus.topic | The name of Service Bus topic | Any Str |
+| topic | The name of Service Bus topic | Any Str |
 
 ### servicebus.topic.subscription.active_messages
 
@@ -136,8 +136,8 @@ The number of active messages on the Service Bus topic subscription
 
 | Name | Description | Values |
 | ---- | ----------- | ------ |
-| servicebus.topic | The name of Service Bus topic | Any Str |
-| servicebus.topic.subscription | The name of the Service Bus topic subscription | Any Str |
+| topic | The name of Service Bus topic | Any Str |
+| subscription | The name of the Service Bus topic subscription | Any Str |
 
 ### servicebus.topic.subscription.deadletter_messages
 
@@ -151,8 +151,8 @@ The number of deadletter messages on the Service Bus topic subscription
 
 | Name | Description | Values |
 | ---- | ----------- | ------ |
-| servicebus.topic | The name of Service Bus topic | Any Str |
-| servicebus.topic.subscription | The name of the Service Bus topic subscription | Any Str |
+| topic | The name of Service Bus topic | Any Str |
+| subscription | The name of the Service Bus topic subscription | Any Str |
 
 ## Resource Attributes
 
