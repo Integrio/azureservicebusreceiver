@@ -5,7 +5,7 @@ GO_FILES = $(shell find $(ROOT_DIR) -name "*.go" ! -path "*/thrift_0_9_2/*")
 GO_MODULES = $(shell go list ./... | grep -v "thrift_0_9_2" | grep -v "e2e")
 COVERAGE_DIR ?= $(ROOT_DIR)/coverage
 BUILDER ?= ./ocb
-VERSION ?= 0.113.0
+VERSION ?= 0.121.0
 
 export GO111MODULE = on
 
