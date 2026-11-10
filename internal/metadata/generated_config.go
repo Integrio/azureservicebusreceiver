@@ -3,74 +3,559 @@
 package metadata
 
 import (
+	"fmt"
+
 	"go.opentelemetry.io/collector/confmap"
 	"go.opentelemetry.io/collector/filter"
 )
 
-// MetricConfig provides common config for a particular metric.
-type MetricConfig struct {
-	Enabled bool `mapstructure:"enabled"`
+// ServicebusQueueActiveMessagesMetricAttributeKey specifies the key of an attribute for the servicebus.queue.active_messages metric.
+type ServicebusQueueActiveMessagesMetricAttributeKey string
 
+const (
+	ServicebusQueueActiveMessagesMetricAttributeKeyQueue ServicebusQueueActiveMessagesMetricAttributeKey = "queue"
+)
+
+// ServicebusQueueActiveMessagesMetricConfig provides config for the servicebus.queue.active_messages metric.
+type ServicebusQueueActiveMessagesMetricConfig struct {
+	Enabled          bool `mapstructure:"enabled"`
 	enabledSetByUser bool
+
+	AggregationStrategy string                                            `mapstructure:"aggregation_strategy"`
+	EnabledAttributes   []ServicebusQueueActiveMessagesMetricAttributeKey `mapstructure:"attributes"`
 }
 
-func (ms *MetricConfig) Unmarshal(parser *confmap.Conf) error {
+func (ms *ServicebusQueueActiveMessagesMetricConfig) Unmarshal(parser *confmap.Conf) error {
 	if parser == nil {
 		return nil
 	}
+
 	err := parser.Unmarshal(ms)
 	if err != nil {
 		return err
 	}
+
 	ms.enabledSetByUser = parser.IsSet("enabled")
 	return nil
 }
 
-// MetricsConfig provides config for servicebus metrics.
+func (ms *ServicebusQueueActiveMessagesMetricConfig) Validate() error {
+	for _, val := range ms.EnabledAttributes {
+		switch val {
+		case ServicebusQueueActiveMessagesMetricAttributeKeyQueue:
+		default:
+			return fmt.Errorf("metric servicebus.queue.active_messages doesn't have an attribute %v, valid attributes: [queue]", val)
+		}
+	}
+
+	switch ms.AggregationStrategy {
+	case AggregationStrategySum, AggregationStrategyAvg, AggregationStrategyMin, AggregationStrategyMax:
+	default:
+		return fmt.Errorf("invalid aggregation strategy %q, valid strategies: [%s, %s, %s, %s]", ms.AggregationStrategy, AggregationStrategySum, AggregationStrategyAvg, AggregationStrategyMin, AggregationStrategyMax)
+	}
+
+	return nil
+}
+
+// ServicebusQueueCurrentSizeMetricAttributeKey specifies the key of an attribute for the servicebus.queue.current_size metric.
+type ServicebusQueueCurrentSizeMetricAttributeKey string
+
+const (
+	ServicebusQueueCurrentSizeMetricAttributeKeyQueue ServicebusQueueCurrentSizeMetricAttributeKey = "queue"
+)
+
+// ServicebusQueueCurrentSizeMetricConfig provides config for the servicebus.queue.current_size metric.
+type ServicebusQueueCurrentSizeMetricConfig struct {
+	Enabled          bool `mapstructure:"enabled"`
+	enabledSetByUser bool
+
+	AggregationStrategy string                                         `mapstructure:"aggregation_strategy"`
+	EnabledAttributes   []ServicebusQueueCurrentSizeMetricAttributeKey `mapstructure:"attributes"`
+}
+
+func (ms *ServicebusQueueCurrentSizeMetricConfig) Unmarshal(parser *confmap.Conf) error {
+	if parser == nil {
+		return nil
+	}
+
+	err := parser.Unmarshal(ms)
+	if err != nil {
+		return err
+	}
+
+	ms.enabledSetByUser = parser.IsSet("enabled")
+	return nil
+}
+
+func (ms *ServicebusQueueCurrentSizeMetricConfig) Validate() error {
+	for _, val := range ms.EnabledAttributes {
+		switch val {
+		case ServicebusQueueCurrentSizeMetricAttributeKeyQueue:
+		default:
+			return fmt.Errorf("metric servicebus.queue.current_size doesn't have an attribute %v, valid attributes: [queue]", val)
+		}
+	}
+
+	switch ms.AggregationStrategy {
+	case AggregationStrategySum, AggregationStrategyAvg, AggregationStrategyMin, AggregationStrategyMax:
+	default:
+		return fmt.Errorf("invalid aggregation strategy %q, valid strategies: [%s, %s, %s, %s]", ms.AggregationStrategy, AggregationStrategySum, AggregationStrategyAvg, AggregationStrategyMin, AggregationStrategyMax)
+	}
+
+	return nil
+}
+
+// ServicebusQueueDeadletterMessagesMetricAttributeKey specifies the key of an attribute for the servicebus.queue.deadletter_messages metric.
+type ServicebusQueueDeadletterMessagesMetricAttributeKey string
+
+const (
+	ServicebusQueueDeadletterMessagesMetricAttributeKeyQueue ServicebusQueueDeadletterMessagesMetricAttributeKey = "queue"
+)
+
+// ServicebusQueueDeadletterMessagesMetricConfig provides config for the servicebus.queue.deadletter_messages metric.
+type ServicebusQueueDeadletterMessagesMetricConfig struct {
+	Enabled          bool `mapstructure:"enabled"`
+	enabledSetByUser bool
+
+	AggregationStrategy string                                                `mapstructure:"aggregation_strategy"`
+	EnabledAttributes   []ServicebusQueueDeadletterMessagesMetricAttributeKey `mapstructure:"attributes"`
+}
+
+func (ms *ServicebusQueueDeadletterMessagesMetricConfig) Unmarshal(parser *confmap.Conf) error {
+	if parser == nil {
+		return nil
+	}
+
+	err := parser.Unmarshal(ms)
+	if err != nil {
+		return err
+	}
+
+	ms.enabledSetByUser = parser.IsSet("enabled")
+	return nil
+}
+
+func (ms *ServicebusQueueDeadletterMessagesMetricConfig) Validate() error {
+	for _, val := range ms.EnabledAttributes {
+		switch val {
+		case ServicebusQueueDeadletterMessagesMetricAttributeKeyQueue:
+		default:
+			return fmt.Errorf("metric servicebus.queue.deadletter_messages doesn't have an attribute %v, valid attributes: [queue]", val)
+		}
+	}
+
+	switch ms.AggregationStrategy {
+	case AggregationStrategySum, AggregationStrategyAvg, AggregationStrategyMin, AggregationStrategyMax:
+	default:
+		return fmt.Errorf("invalid aggregation strategy %q, valid strategies: [%s, %s, %s, %s]", ms.AggregationStrategy, AggregationStrategySum, AggregationStrategyAvg, AggregationStrategyMin, AggregationStrategyMax)
+	}
+
+	return nil
+}
+
+// ServicebusQueueMaxSizeMetricAttributeKey specifies the key of an attribute for the servicebus.queue.max_size metric.
+type ServicebusQueueMaxSizeMetricAttributeKey string
+
+const (
+	ServicebusQueueMaxSizeMetricAttributeKeyQueue ServicebusQueueMaxSizeMetricAttributeKey = "queue"
+)
+
+// ServicebusQueueMaxSizeMetricConfig provides config for the servicebus.queue.max_size metric.
+type ServicebusQueueMaxSizeMetricConfig struct {
+	Enabled          bool `mapstructure:"enabled"`
+	enabledSetByUser bool
+
+	AggregationStrategy string                                     `mapstructure:"aggregation_strategy"`
+	EnabledAttributes   []ServicebusQueueMaxSizeMetricAttributeKey `mapstructure:"attributes"`
+}
+
+func (ms *ServicebusQueueMaxSizeMetricConfig) Unmarshal(parser *confmap.Conf) error {
+	if parser == nil {
+		return nil
+	}
+
+	err := parser.Unmarshal(ms)
+	if err != nil {
+		return err
+	}
+
+	ms.enabledSetByUser = parser.IsSet("enabled")
+	return nil
+}
+
+func (ms *ServicebusQueueMaxSizeMetricConfig) Validate() error {
+	for _, val := range ms.EnabledAttributes {
+		switch val {
+		case ServicebusQueueMaxSizeMetricAttributeKeyQueue:
+		default:
+			return fmt.Errorf("metric servicebus.queue.max_size doesn't have an attribute %v, valid attributes: [queue]", val)
+		}
+	}
+
+	switch ms.AggregationStrategy {
+	case AggregationStrategySum, AggregationStrategyAvg, AggregationStrategyMin, AggregationStrategyMax:
+	default:
+		return fmt.Errorf("invalid aggregation strategy %q, valid strategies: [%s, %s, %s, %s]", ms.AggregationStrategy, AggregationStrategySum, AggregationStrategyAvg, AggregationStrategyMin, AggregationStrategyMax)
+	}
+
+	return nil
+}
+
+// ServicebusQueueScheduledMessagesMetricAttributeKey specifies the key of an attribute for the servicebus.queue.scheduled_messages metric.
+type ServicebusQueueScheduledMessagesMetricAttributeKey string
+
+const (
+	ServicebusQueueScheduledMessagesMetricAttributeKeyQueue ServicebusQueueScheduledMessagesMetricAttributeKey = "queue"
+)
+
+// ServicebusQueueScheduledMessagesMetricConfig provides config for the servicebus.queue.scheduled_messages metric.
+type ServicebusQueueScheduledMessagesMetricConfig struct {
+	Enabled          bool `mapstructure:"enabled"`
+	enabledSetByUser bool
+
+	AggregationStrategy string                                               `mapstructure:"aggregation_strategy"`
+	EnabledAttributes   []ServicebusQueueScheduledMessagesMetricAttributeKey `mapstructure:"attributes"`
+}
+
+func (ms *ServicebusQueueScheduledMessagesMetricConfig) Unmarshal(parser *confmap.Conf) error {
+	if parser == nil {
+		return nil
+	}
+
+	err := parser.Unmarshal(ms)
+	if err != nil {
+		return err
+	}
+
+	ms.enabledSetByUser = parser.IsSet("enabled")
+	return nil
+}
+
+func (ms *ServicebusQueueScheduledMessagesMetricConfig) Validate() error {
+	for _, val := range ms.EnabledAttributes {
+		switch val {
+		case ServicebusQueueScheduledMessagesMetricAttributeKeyQueue:
+		default:
+			return fmt.Errorf("metric servicebus.queue.scheduled_messages doesn't have an attribute %v, valid attributes: [queue]", val)
+		}
+	}
+
+	switch ms.AggregationStrategy {
+	case AggregationStrategySum, AggregationStrategyAvg, AggregationStrategyMin, AggregationStrategyMax:
+	default:
+		return fmt.Errorf("invalid aggregation strategy %q, valid strategies: [%s, %s, %s, %s]", ms.AggregationStrategy, AggregationStrategySum, AggregationStrategyAvg, AggregationStrategyMin, AggregationStrategyMax)
+	}
+
+	return nil
+}
+
+// ServicebusTopicCurrentSizeMetricAttributeKey specifies the key of an attribute for the servicebus.topic.current_size metric.
+type ServicebusTopicCurrentSizeMetricAttributeKey string
+
+const (
+	ServicebusTopicCurrentSizeMetricAttributeKeyTopic ServicebusTopicCurrentSizeMetricAttributeKey = "topic"
+)
+
+// ServicebusTopicCurrentSizeMetricConfig provides config for the servicebus.topic.current_size metric.
+type ServicebusTopicCurrentSizeMetricConfig struct {
+	Enabled          bool `mapstructure:"enabled"`
+	enabledSetByUser bool
+
+	AggregationStrategy string                                         `mapstructure:"aggregation_strategy"`
+	EnabledAttributes   []ServicebusTopicCurrentSizeMetricAttributeKey `mapstructure:"attributes"`
+}
+
+func (ms *ServicebusTopicCurrentSizeMetricConfig) Unmarshal(parser *confmap.Conf) error {
+	if parser == nil {
+		return nil
+	}
+
+	err := parser.Unmarshal(ms)
+	if err != nil {
+		return err
+	}
+
+	ms.enabledSetByUser = parser.IsSet("enabled")
+	return nil
+}
+
+func (ms *ServicebusTopicCurrentSizeMetricConfig) Validate() error {
+	for _, val := range ms.EnabledAttributes {
+		switch val {
+		case ServicebusTopicCurrentSizeMetricAttributeKeyTopic:
+		default:
+			return fmt.Errorf("metric servicebus.topic.current_size doesn't have an attribute %v, valid attributes: [topic]", val)
+		}
+	}
+
+	switch ms.AggregationStrategy {
+	case AggregationStrategySum, AggregationStrategyAvg, AggregationStrategyMin, AggregationStrategyMax:
+	default:
+		return fmt.Errorf("invalid aggregation strategy %q, valid strategies: [%s, %s, %s, %s]", ms.AggregationStrategy, AggregationStrategySum, AggregationStrategyAvg, AggregationStrategyMin, AggregationStrategyMax)
+	}
+
+	return nil
+}
+
+// ServicebusTopicMaxSizeMetricAttributeKey specifies the key of an attribute for the servicebus.topic.max_size metric.
+type ServicebusTopicMaxSizeMetricAttributeKey string
+
+const (
+	ServicebusTopicMaxSizeMetricAttributeKeyTopic ServicebusTopicMaxSizeMetricAttributeKey = "topic"
+)
+
+// ServicebusTopicMaxSizeMetricConfig provides config for the servicebus.topic.max_size metric.
+type ServicebusTopicMaxSizeMetricConfig struct {
+	Enabled          bool `mapstructure:"enabled"`
+	enabledSetByUser bool
+
+	AggregationStrategy string                                     `mapstructure:"aggregation_strategy"`
+	EnabledAttributes   []ServicebusTopicMaxSizeMetricAttributeKey `mapstructure:"attributes"`
+}
+
+func (ms *ServicebusTopicMaxSizeMetricConfig) Unmarshal(parser *confmap.Conf) error {
+	if parser == nil {
+		return nil
+	}
+
+	err := parser.Unmarshal(ms)
+	if err != nil {
+		return err
+	}
+
+	ms.enabledSetByUser = parser.IsSet("enabled")
+	return nil
+}
+
+func (ms *ServicebusTopicMaxSizeMetricConfig) Validate() error {
+	for _, val := range ms.EnabledAttributes {
+		switch val {
+		case ServicebusTopicMaxSizeMetricAttributeKeyTopic:
+		default:
+			return fmt.Errorf("metric servicebus.topic.max_size doesn't have an attribute %v, valid attributes: [topic]", val)
+		}
+	}
+
+	switch ms.AggregationStrategy {
+	case AggregationStrategySum, AggregationStrategyAvg, AggregationStrategyMin, AggregationStrategyMax:
+	default:
+		return fmt.Errorf("invalid aggregation strategy %q, valid strategies: [%s, %s, %s, %s]", ms.AggregationStrategy, AggregationStrategySum, AggregationStrategyAvg, AggregationStrategyMin, AggregationStrategyMax)
+	}
+
+	return nil
+}
+
+// ServicebusTopicScheduledMessagesMetricAttributeKey specifies the key of an attribute for the servicebus.topic.scheduled_messages metric.
+type ServicebusTopicScheduledMessagesMetricAttributeKey string
+
+const (
+	ServicebusTopicScheduledMessagesMetricAttributeKeyTopic ServicebusTopicScheduledMessagesMetricAttributeKey = "topic"
+)
+
+// ServicebusTopicScheduledMessagesMetricConfig provides config for the servicebus.topic.scheduled_messages metric.
+type ServicebusTopicScheduledMessagesMetricConfig struct {
+	Enabled          bool `mapstructure:"enabled"`
+	enabledSetByUser bool
+
+	AggregationStrategy string                                               `mapstructure:"aggregation_strategy"`
+	EnabledAttributes   []ServicebusTopicScheduledMessagesMetricAttributeKey `mapstructure:"attributes"`
+}
+
+func (ms *ServicebusTopicScheduledMessagesMetricConfig) Unmarshal(parser *confmap.Conf) error {
+	if parser == nil {
+		return nil
+	}
+
+	err := parser.Unmarshal(ms)
+	if err != nil {
+		return err
+	}
+
+	ms.enabledSetByUser = parser.IsSet("enabled")
+	return nil
+}
+
+func (ms *ServicebusTopicScheduledMessagesMetricConfig) Validate() error {
+	for _, val := range ms.EnabledAttributes {
+		switch val {
+		case ServicebusTopicScheduledMessagesMetricAttributeKeyTopic:
+		default:
+			return fmt.Errorf("metric servicebus.topic.scheduled_messages doesn't have an attribute %v, valid attributes: [topic]", val)
+		}
+	}
+
+	switch ms.AggregationStrategy {
+	case AggregationStrategySum, AggregationStrategyAvg, AggregationStrategyMin, AggregationStrategyMax:
+	default:
+		return fmt.Errorf("invalid aggregation strategy %q, valid strategies: [%s, %s, %s, %s]", ms.AggregationStrategy, AggregationStrategySum, AggregationStrategyAvg, AggregationStrategyMin, AggregationStrategyMax)
+	}
+
+	return nil
+}
+
+// ServicebusTopicSubscriptionActiveMessagesMetricAttributeKey specifies the key of an attribute for the servicebus.topic.subscription.active_messages metric.
+type ServicebusTopicSubscriptionActiveMessagesMetricAttributeKey string
+
+const (
+	ServicebusTopicSubscriptionActiveMessagesMetricAttributeKeyTopic        ServicebusTopicSubscriptionActiveMessagesMetricAttributeKey = "topic"
+	ServicebusTopicSubscriptionActiveMessagesMetricAttributeKeySubscription ServicebusTopicSubscriptionActiveMessagesMetricAttributeKey = "subscription"
+)
+
+// ServicebusTopicSubscriptionActiveMessagesMetricConfig provides config for the servicebus.topic.subscription.active_messages metric.
+type ServicebusTopicSubscriptionActiveMessagesMetricConfig struct {
+	Enabled          bool `mapstructure:"enabled"`
+	enabledSetByUser bool
+
+	AggregationStrategy string                                                        `mapstructure:"aggregation_strategy"`
+	EnabledAttributes   []ServicebusTopicSubscriptionActiveMessagesMetricAttributeKey `mapstructure:"attributes"`
+}
+
+func (ms *ServicebusTopicSubscriptionActiveMessagesMetricConfig) Unmarshal(parser *confmap.Conf) error {
+	if parser == nil {
+		return nil
+	}
+
+	err := parser.Unmarshal(ms)
+	if err != nil {
+		return err
+	}
+
+	ms.enabledSetByUser = parser.IsSet("enabled")
+	return nil
+}
+
+func (ms *ServicebusTopicSubscriptionActiveMessagesMetricConfig) Validate() error {
+	for _, val := range ms.EnabledAttributes {
+		switch val {
+		case ServicebusTopicSubscriptionActiveMessagesMetricAttributeKeyTopic, ServicebusTopicSubscriptionActiveMessagesMetricAttributeKeySubscription:
+		default:
+			return fmt.Errorf("metric servicebus.topic.subscription.active_messages doesn't have an attribute %v, valid attributes: [topic, subscription]", val)
+		}
+	}
+
+	switch ms.AggregationStrategy {
+	case AggregationStrategySum, AggregationStrategyAvg, AggregationStrategyMin, AggregationStrategyMax:
+	default:
+		return fmt.Errorf("invalid aggregation strategy %q, valid strategies: [%s, %s, %s, %s]", ms.AggregationStrategy, AggregationStrategySum, AggregationStrategyAvg, AggregationStrategyMin, AggregationStrategyMax)
+	}
+
+	return nil
+}
+
+// ServicebusTopicSubscriptionDeadletterMessagesMetricAttributeKey specifies the key of an attribute for the servicebus.topic.subscription.deadletter_messages metric.
+type ServicebusTopicSubscriptionDeadletterMessagesMetricAttributeKey string
+
+const (
+	ServicebusTopicSubscriptionDeadletterMessagesMetricAttributeKeyTopic        ServicebusTopicSubscriptionDeadletterMessagesMetricAttributeKey = "topic"
+	ServicebusTopicSubscriptionDeadletterMessagesMetricAttributeKeySubscription ServicebusTopicSubscriptionDeadletterMessagesMetricAttributeKey = "subscription"
+)
+
+// ServicebusTopicSubscriptionDeadletterMessagesMetricConfig provides config for the servicebus.topic.subscription.deadletter_messages metric.
+type ServicebusTopicSubscriptionDeadletterMessagesMetricConfig struct {
+	Enabled          bool `mapstructure:"enabled"`
+	enabledSetByUser bool
+
+	AggregationStrategy string                                                            `mapstructure:"aggregation_strategy"`
+	EnabledAttributes   []ServicebusTopicSubscriptionDeadletterMessagesMetricAttributeKey `mapstructure:"attributes"`
+}
+
+func (ms *ServicebusTopicSubscriptionDeadletterMessagesMetricConfig) Unmarshal(parser *confmap.Conf) error {
+	if parser == nil {
+		return nil
+	}
+
+	err := parser.Unmarshal(ms)
+	if err != nil {
+		return err
+	}
+
+	ms.enabledSetByUser = parser.IsSet("enabled")
+	return nil
+}
+
+func (ms *ServicebusTopicSubscriptionDeadletterMessagesMetricConfig) Validate() error {
+	for _, val := range ms.EnabledAttributes {
+		switch val {
+		case ServicebusTopicSubscriptionDeadletterMessagesMetricAttributeKeyTopic, ServicebusTopicSubscriptionDeadletterMessagesMetricAttributeKeySubscription:
+		default:
+			return fmt.Errorf("metric servicebus.topic.subscription.deadletter_messages doesn't have an attribute %v, valid attributes: [topic, subscription]", val)
+		}
+	}
+
+	switch ms.AggregationStrategy {
+	case AggregationStrategySum, AggregationStrategyAvg, AggregationStrategyMin, AggregationStrategyMax:
+	default:
+		return fmt.Errorf("invalid aggregation strategy %q, valid strategies: [%s, %s, %s, %s]", ms.AggregationStrategy, AggregationStrategySum, AggregationStrategyAvg, AggregationStrategyMin, AggregationStrategyMax)
+	}
+
+	return nil
+}
+
+// MetricsConfig provides config for azureservicebus metrics.
 type MetricsConfig struct {
-	ServicebusQueueActiveMessages                 MetricConfig `mapstructure:"servicebus.queue.active_messages"`
-	ServicebusQueueCurrentSize                    MetricConfig `mapstructure:"servicebus.queue.current_size"`
-	ServicebusQueueDeadletterMessages             MetricConfig `mapstructure:"servicebus.queue.deadletter_messages"`
-	ServicebusQueueMaxSize                        MetricConfig `mapstructure:"servicebus.queue.max_size"`
-	ServicebusQueueScheduledMessages              MetricConfig `mapstructure:"servicebus.queue.scheduled_messages"`
-	ServicebusTopicCurrentSize                    MetricConfig `mapstructure:"servicebus.topic.current_size"`
-	ServicebusTopicMaxSize                        MetricConfig `mapstructure:"servicebus.topic.max_size"`
-	ServicebusTopicScheduledMessages              MetricConfig `mapstructure:"servicebus.topic.scheduled_messages"`
-	ServicebusTopicSubscriptionActiveMessages     MetricConfig `mapstructure:"servicebus.topic.subscription.active_messages"`
-	ServicebusTopicSubscriptionDeadletterMessages MetricConfig `mapstructure:"servicebus.topic.subscription.deadletter_messages"`
+	ServicebusQueueActiveMessages                 ServicebusQueueActiveMessagesMetricConfig                 `mapstructure:"servicebus.queue.active_messages"`
+	ServicebusQueueCurrentSize                    ServicebusQueueCurrentSizeMetricConfig                    `mapstructure:"servicebus.queue.current_size"`
+	ServicebusQueueDeadletterMessages             ServicebusQueueDeadletterMessagesMetricConfig             `mapstructure:"servicebus.queue.deadletter_messages"`
+	ServicebusQueueMaxSize                        ServicebusQueueMaxSizeMetricConfig                        `mapstructure:"servicebus.queue.max_size"`
+	ServicebusQueueScheduledMessages              ServicebusQueueScheduledMessagesMetricConfig              `mapstructure:"servicebus.queue.scheduled_messages"`
+	ServicebusTopicCurrentSize                    ServicebusTopicCurrentSizeMetricConfig                    `mapstructure:"servicebus.topic.current_size"`
+	ServicebusTopicMaxSize                        ServicebusTopicMaxSizeMetricConfig                        `mapstructure:"servicebus.topic.max_size"`
+	ServicebusTopicScheduledMessages              ServicebusTopicScheduledMessagesMetricConfig              `mapstructure:"servicebus.topic.scheduled_messages"`
+	ServicebusTopicSubscriptionActiveMessages     ServicebusTopicSubscriptionActiveMessagesMetricConfig     `mapstructure:"servicebus.topic.subscription.active_messages"`
+	ServicebusTopicSubscriptionDeadletterMessages ServicebusTopicSubscriptionDeadletterMessagesMetricConfig `mapstructure:"servicebus.topic.subscription.deadletter_messages"`
 }
 
 func DefaultMetricsConfig() MetricsConfig {
 	return MetricsConfig{
-		ServicebusQueueActiveMessages: MetricConfig{
-			Enabled: true,
+		ServicebusQueueActiveMessages: ServicebusQueueActiveMessagesMetricConfig{
+			Enabled:             true,
+			AggregationStrategy: AggregationStrategyAvg,
+			EnabledAttributes:   []ServicebusQueueActiveMessagesMetricAttributeKey{ServicebusQueueActiveMessagesMetricAttributeKeyQueue},
 		},
-		ServicebusQueueCurrentSize: MetricConfig{
-			Enabled: true,
+		ServicebusQueueCurrentSize: ServicebusQueueCurrentSizeMetricConfig{
+			Enabled:             true,
+			AggregationStrategy: AggregationStrategyAvg,
+			EnabledAttributes:   []ServicebusQueueCurrentSizeMetricAttributeKey{ServicebusQueueCurrentSizeMetricAttributeKeyQueue},
 		},
-		ServicebusQueueDeadletterMessages: MetricConfig{
-			Enabled: true,
+		ServicebusQueueDeadletterMessages: ServicebusQueueDeadletterMessagesMetricConfig{
+			Enabled:             true,
+			AggregationStrategy: AggregationStrategyAvg,
+			EnabledAttributes:   []ServicebusQueueDeadletterMessagesMetricAttributeKey{ServicebusQueueDeadletterMessagesMetricAttributeKeyQueue},
 		},
-		ServicebusQueueMaxSize: MetricConfig{
-			Enabled: true,
+		ServicebusQueueMaxSize: ServicebusQueueMaxSizeMetricConfig{
+			Enabled:             true,
+			AggregationStrategy: AggregationStrategyAvg,
+			EnabledAttributes:   []ServicebusQueueMaxSizeMetricAttributeKey{ServicebusQueueMaxSizeMetricAttributeKeyQueue},
 		},
-		ServicebusQueueScheduledMessages: MetricConfig{
-			Enabled: true,
+		ServicebusQueueScheduledMessages: ServicebusQueueScheduledMessagesMetricConfig{
+			Enabled:             true,
+			AggregationStrategy: AggregationStrategyAvg,
+			EnabledAttributes:   []ServicebusQueueScheduledMessagesMetricAttributeKey{ServicebusQueueScheduledMessagesMetricAttributeKeyQueue},
 		},
-		ServicebusTopicCurrentSize: MetricConfig{
-			Enabled: true,
+		ServicebusTopicCurrentSize: ServicebusTopicCurrentSizeMetricConfig{
+			Enabled:             true,
+			AggregationStrategy: AggregationStrategyAvg,
+			EnabledAttributes:   []ServicebusTopicCurrentSizeMetricAttributeKey{ServicebusTopicCurrentSizeMetricAttributeKeyTopic},
 		},
-		ServicebusTopicMaxSize: MetricConfig{
-			Enabled: true,
+		ServicebusTopicMaxSize: ServicebusTopicMaxSizeMetricConfig{
+			Enabled:             true,
+			AggregationStrategy: AggregationStrategyAvg,
+			EnabledAttributes:   []ServicebusTopicMaxSizeMetricAttributeKey{ServicebusTopicMaxSizeMetricAttributeKeyTopic},
 		},
-		ServicebusTopicScheduledMessages: MetricConfig{
-			Enabled: true,
+		ServicebusTopicScheduledMessages: ServicebusTopicScheduledMessagesMetricConfig{
+			Enabled:             true,
+			AggregationStrategy: AggregationStrategyAvg,
+			EnabledAttributes:   []ServicebusTopicScheduledMessagesMetricAttributeKey{ServicebusTopicScheduledMessagesMetricAttributeKeyTopic},
 		},
-		ServicebusTopicSubscriptionActiveMessages: MetricConfig{
-			Enabled: true,
+		ServicebusTopicSubscriptionActiveMessages: ServicebusTopicSubscriptionActiveMessagesMetricConfig{
+			Enabled:             true,
+			AggregationStrategy: AggregationStrategyAvg,
+			EnabledAttributes:   []ServicebusTopicSubscriptionActiveMessagesMetricAttributeKey{ServicebusTopicSubscriptionActiveMessagesMetricAttributeKeyTopic, ServicebusTopicSubscriptionActiveMessagesMetricAttributeKeySubscription},
 		},
-		ServicebusTopicSubscriptionDeadletterMessages: MetricConfig{
-			Enabled: true,
+		ServicebusTopicSubscriptionDeadletterMessages: ServicebusTopicSubscriptionDeadletterMessagesMetricConfig{
+			Enabled:             true,
+			AggregationStrategy: AggregationStrategyAvg,
+			EnabledAttributes:   []ServicebusTopicSubscriptionDeadletterMessagesMetricAttributeKey{ServicebusTopicSubscriptionDeadletterMessagesMetricAttributeKeyTopic, ServicebusTopicSubscriptionDeadletterMessagesMetricAttributeKeySubscription},
 		},
 	}
 }
@@ -101,7 +586,7 @@ func (rac *ResourceAttributeConfig) Unmarshal(parser *confmap.Conf) error {
 	return nil
 }
 
-// ResourceAttributesConfig provides config for servicebus resource attributes.
+// ResourceAttributesConfig provides config for azureservicebus resource attributes.
 type ResourceAttributesConfig struct {
 	ServicebusNamespaceName ResourceAttributeConfig `mapstructure:"servicebus.namespace.name"`
 }
@@ -114,13 +599,13 @@ func DefaultResourceAttributesConfig() ResourceAttributesConfig {
 	}
 }
 
-// MetricsBuilderConfig is a configuration for servicebus metrics builder.
+// MetricsBuilderConfig is a configuration for azureservicebus metrics builder.
 type MetricsBuilderConfig struct {
 	Metrics            MetricsConfig            `mapstructure:"metrics"`
 	ResourceAttributes ResourceAttributesConfig `mapstructure:"resource_attributes"`
 }
 
-func DefaultMetricsBuilderConfig() MetricsBuilderConfig {
+func NewDefaultMetricsBuilderConfig() MetricsBuilderConfig {
 	return MetricsBuilderConfig{
 		Metrics:            DefaultMetricsConfig(),
 		ResourceAttributes: DefaultResourceAttributesConfig(),

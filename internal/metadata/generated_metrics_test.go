@@ -19,6 +19,7 @@ const (
 	testDataSetDefault testDataSet = iota
 	testDataSetAll
 	testDataSetNone
+	testDataSetReag
 )
 
 func TestMetricsBuilder(t *testing.T) {
@@ -35,6 +36,11 @@ func TestMetricsBuilder(t *testing.T) {
 			name:        "all_set",
 			metricsSet:  testDataSetAll,
 			resAttrsSet: testDataSetAll,
+		},
+		{
+			name:        "reaggregate_set",
+			metricsSet:  testDataSetReag,
+			resAttrsSet: testDataSetReag,
 		},
 		{
 			name:        "none_set",
@@ -57,237 +63,591 @@ func TestMetricsBuilder(t *testing.T) {
 			start := pcommon.Timestamp(1_000_000_000)
 			ts := pcommon.Timestamp(1_000_001_000)
 			observedZapCore, observedLogs := observer.New(zap.WarnLevel)
-			settings := receivertest.NewNopSettings()
+			settings := receivertest.NewNopSettings(receivertest.NopType)
 			settings.Logger = zap.New(observedZapCore)
 			mb := NewMetricsBuilder(loadMetricsBuilderConfig(t, tt.name), settings, WithStartTime(start))
+			aggMap := make(map[string]string) // contains the aggregation strategies for each metric name
+			aggMap["servicebus.queue.active_messages"] = mb.metricServicebusQueueActiveMessages.config.AggregationStrategy
+			aggMap["servicebus.queue.current_size"] = mb.metricServicebusQueueCurrentSize.config.AggregationStrategy
+			aggMap["servicebus.queue.deadletter_messages"] = mb.metricServicebusQueueDeadletterMessages.config.AggregationStrategy
+			aggMap["servicebus.queue.max_size"] = mb.metricServicebusQueueMaxSize.config.AggregationStrategy
+			aggMap["servicebus.queue.scheduled_messages"] = mb.metricServicebusQueueScheduledMessages.config.AggregationStrategy
+			aggMap["servicebus.topic.current_size"] = mb.metricServicebusTopicCurrentSize.config.AggregationStrategy
+			aggMap["servicebus.topic.max_size"] = mb.metricServicebusTopicMaxSize.config.AggregationStrategy
+			aggMap["servicebus.topic.scheduled_messages"] = mb.metricServicebusTopicScheduledMessages.config.AggregationStrategy
+			aggMap["servicebus.topic.subscription.active_messages"] = mb.metricServicebusTopicSubscriptionActiveMessages.config.AggregationStrategy
+			aggMap["servicebus.topic.subscription.deadletter_messages"] = mb.metricServicebusTopicSubscriptionDeadletterMessages.config.AggregationStrategy
 
 			expectedWarnings := 0
-
-			assert.Equal(t, expectedWarnings, observedLogs.Len())
+			if tt.metricsSet != testDataSetReag {
+				assert.Equal(t, expectedWarnings, observedLogs.Len())
+			}
 
 			defaultMetricsCount := 0
 			allMetricsCount := 0
-
 			defaultMetricsCount++
 			allMetricsCount++
 			mb.RecordServicebusQueueActiveMessagesDataPoint(ts, 1, "queue-val")
-
+			if tt.name == "reaggregate_set" {
+				mb.RecordServicebusQueueActiveMessagesDataPoint(ts, 3, "queue-val-2")
+				// a different timestamp is a different key: must not merge with the above.
+				mb.RecordServicebusQueueActiveMessagesDataPoint(ts+1, 3, "queue-val-2")
+				assert.Equal(t, 2, mb.metricServicebusQueueActiveMessages.data.Gauge().DataPoints().Len())
+			}
 			defaultMetricsCount++
 			allMetricsCount++
 			mb.RecordServicebusQueueCurrentSizeDataPoint(ts, 1, "queue-val")
-
+			if tt.name == "reaggregate_set" {
+				mb.RecordServicebusQueueCurrentSizeDataPoint(ts, 3, "queue-val-2")
+				// a different timestamp is a different key: must not merge with the above.
+				mb.RecordServicebusQueueCurrentSizeDataPoint(ts+1, 3, "queue-val-2")
+				assert.Equal(t, 2, mb.metricServicebusQueueCurrentSize.data.Gauge().DataPoints().Len())
+			}
 			defaultMetricsCount++
 			allMetricsCount++
 			mb.RecordServicebusQueueDeadletterMessagesDataPoint(ts, 1, "queue-val")
-
+			if tt.name == "reaggregate_set" {
+				mb.RecordServicebusQueueDeadletterMessagesDataPoint(ts, 3, "queue-val-2")
+				// a different timestamp is a different key: must not merge with the above.
+				mb.RecordServicebusQueueDeadletterMessagesDataPoint(ts+1, 3, "queue-val-2")
+				assert.Equal(t, 2, mb.metricServicebusQueueDeadletterMessages.data.Gauge().DataPoints().Len())
+			}
 			defaultMetricsCount++
 			allMetricsCount++
 			mb.RecordServicebusQueueMaxSizeDataPoint(ts, 1, "queue-val")
-
+			if tt.name == "reaggregate_set" {
+				mb.RecordServicebusQueueMaxSizeDataPoint(ts, 3, "queue-val-2")
+				// a different timestamp is a different key: must not merge with the above.
+				mb.RecordServicebusQueueMaxSizeDataPoint(ts+1, 3, "queue-val-2")
+				assert.Equal(t, 2, mb.metricServicebusQueueMaxSize.data.Gauge().DataPoints().Len())
+			}
 			defaultMetricsCount++
 			allMetricsCount++
 			mb.RecordServicebusQueueScheduledMessagesDataPoint(ts, 1, "queue-val")
-
+			if tt.name == "reaggregate_set" {
+				mb.RecordServicebusQueueScheduledMessagesDataPoint(ts, 3, "queue-val-2")
+				// a different timestamp is a different key: must not merge with the above.
+				mb.RecordServicebusQueueScheduledMessagesDataPoint(ts+1, 3, "queue-val-2")
+				assert.Equal(t, 2, mb.metricServicebusQueueScheduledMessages.data.Gauge().DataPoints().Len())
+			}
 			defaultMetricsCount++
 			allMetricsCount++
 			mb.RecordServicebusTopicCurrentSizeDataPoint(ts, 1, "topic-val")
-
+			if tt.name == "reaggregate_set" {
+				mb.RecordServicebusTopicCurrentSizeDataPoint(ts, 3, "topic-val-2")
+				// a different timestamp is a different key: must not merge with the above.
+				mb.RecordServicebusTopicCurrentSizeDataPoint(ts+1, 3, "topic-val-2")
+				assert.Equal(t, 2, mb.metricServicebusTopicCurrentSize.data.Gauge().DataPoints().Len())
+			}
 			defaultMetricsCount++
 			allMetricsCount++
 			mb.RecordServicebusTopicMaxSizeDataPoint(ts, 1, "topic-val")
-
+			if tt.name == "reaggregate_set" {
+				mb.RecordServicebusTopicMaxSizeDataPoint(ts, 3, "topic-val-2")
+				// a different timestamp is a different key: must not merge with the above.
+				mb.RecordServicebusTopicMaxSizeDataPoint(ts+1, 3, "topic-val-2")
+				assert.Equal(t, 2, mb.metricServicebusTopicMaxSize.data.Gauge().DataPoints().Len())
+			}
 			defaultMetricsCount++
 			allMetricsCount++
 			mb.RecordServicebusTopicScheduledMessagesDataPoint(ts, 1, "topic-val")
-
+			if tt.name == "reaggregate_set" {
+				mb.RecordServicebusTopicScheduledMessagesDataPoint(ts, 3, "topic-val-2")
+				// a different timestamp is a different key: must not merge with the above.
+				mb.RecordServicebusTopicScheduledMessagesDataPoint(ts+1, 3, "topic-val-2")
+				assert.Equal(t, 2, mb.metricServicebusTopicScheduledMessages.data.Gauge().DataPoints().Len())
+			}
 			defaultMetricsCount++
 			allMetricsCount++
 			mb.RecordServicebusTopicSubscriptionActiveMessagesDataPoint(ts, 1, "topic-val", "subscription-val")
-
+			if tt.name == "reaggregate_set" {
+				mb.RecordServicebusTopicSubscriptionActiveMessagesDataPoint(ts, 3, "topic-val-2", "subscription-val-2")
+				// a different timestamp is a different key: must not merge with the above.
+				mb.RecordServicebusTopicSubscriptionActiveMessagesDataPoint(ts+1, 3, "topic-val-2", "subscription-val-2")
+				assert.Equal(t, 2, mb.metricServicebusTopicSubscriptionActiveMessages.data.Gauge().DataPoints().Len())
+			}
 			defaultMetricsCount++
 			allMetricsCount++
 			mb.RecordServicebusTopicSubscriptionDeadletterMessagesDataPoint(ts, 1, "topic-val", "subscription-val")
+			if tt.name == "reaggregate_set" {
+				mb.RecordServicebusTopicSubscriptionDeadletterMessagesDataPoint(ts, 3, "topic-val-2", "subscription-val-2")
+				// a different timestamp is a different key: must not merge with the above.
+				mb.RecordServicebusTopicSubscriptionDeadletterMessagesDataPoint(ts+1, 3, "topic-val-2", "subscription-val-2")
+				assert.Equal(t, 2, mb.metricServicebusTopicSubscriptionDeadletterMessages.data.Gauge().DataPoints().Len())
+			}
 
 			rb := mb.NewResourceBuilder()
 			rb.SetServicebusNamespaceName("servicebus.namespace.name-val")
 			res := rb.Emit()
 			metrics := mb.Emit(WithResource(res))
+			if tt.name == "reaggregate_set" {
+				assert.Empty(t, mb.metricServicebusQueueActiveMessages.aggDataPoints)
+				assert.Empty(t, mb.metricServicebusQueueCurrentSize.aggDataPoints)
+				assert.Empty(t, mb.metricServicebusQueueDeadletterMessages.aggDataPoints)
+				assert.Empty(t, mb.metricServicebusQueueMaxSize.aggDataPoints)
+				assert.Empty(t, mb.metricServicebusQueueScheduledMessages.aggDataPoints)
+				assert.Empty(t, mb.metricServicebusTopicCurrentSize.aggDataPoints)
+				assert.Empty(t, mb.metricServicebusTopicMaxSize.aggDataPoints)
+				assert.Empty(t, mb.metricServicebusTopicScheduledMessages.aggDataPoints)
+				assert.Empty(t, mb.metricServicebusTopicSubscriptionActiveMessages.aggDataPoints)
+				assert.Empty(t, mb.metricServicebusTopicSubscriptionDeadletterMessages.aggDataPoints)
+			}
 
 			if tt.expectEmpty {
 				assert.Equal(t, 0, metrics.ResourceMetrics().Len())
 				return
 			}
 
-			assert.Equal(t, 1, metrics.ResourceMetrics().Len())
-			rm := metrics.ResourceMetrics().At(0)
-			assert.Equal(t, res, rm.Resource())
-			assert.Equal(t, 1, rm.ScopeMetrics().Len())
-			ms := rm.ScopeMetrics().At(0).Metrics()
+			var allMetricsList []pmetric.Metric
+			totalMetricsCount := 0
+			for ri := 0; ri < metrics.ResourceMetrics().Len(); ri++ {
+				rm := metrics.ResourceMetrics().At(ri)
+				assert.Equal(t, 1, rm.ScopeMetrics().Len())
+				ms := rm.ScopeMetrics().At(0).Metrics()
+				totalMetricsCount += ms.Len()
+				for mi := 0; mi < ms.Len(); mi++ {
+					allMetricsList = append(allMetricsList, ms.At(mi))
+				}
+			}
 			if tt.metricsSet == testDataSetDefault {
-				assert.Equal(t, defaultMetricsCount, ms.Len())
+				assert.Equal(t, defaultMetricsCount, totalMetricsCount)
 			}
 			if tt.metricsSet == testDataSetAll {
-				assert.Equal(t, allMetricsCount, ms.Len())
+				assert.Equal(t, allMetricsCount, totalMetricsCount)
 			}
 			validatedMetrics := make(map[string]bool)
-			for i := 0; i < ms.Len(); i++ {
-				switch ms.At(i).Name() {
+			for _, mi := range allMetricsList {
+				switch mi.Name() {
 				case "servicebus.queue.active_messages":
-					assert.False(t, validatedMetrics["servicebus.queue.active_messages"], "Found a duplicate in the metrics slice: servicebus.queue.active_messages")
-					validatedMetrics["servicebus.queue.active_messages"] = true
-					assert.Equal(t, pmetric.MetricTypeGauge, ms.At(i).Type())
-					assert.Equal(t, 1, ms.At(i).Gauge().DataPoints().Len())
-					assert.Equal(t, "The number of active messages on the Service Bus queue", ms.At(i).Description())
-					assert.Equal(t, "{messages}", ms.At(i).Unit())
-					dp := ms.At(i).Gauge().DataPoints().At(0)
-					assert.Equal(t, start, dp.StartTimestamp())
-					assert.Equal(t, ts, dp.Timestamp())
-					assert.Equal(t, pmetric.NumberDataPointValueTypeInt, dp.ValueType())
-					assert.Equal(t, int64(1), dp.IntValue())
-					attrVal, ok := dp.Attributes().Get("queue")
-					assert.True(t, ok)
-					assert.EqualValues(t, "queue-val", attrVal.Str())
+					if tt.name != "reaggregate_set" {
+						assert.False(t, validatedMetrics["servicebus.queue.active_messages"], "Found a duplicate in the metrics slice: servicebus.queue.active_messages")
+						validatedMetrics["servicebus.queue.active_messages"] = true
+						assert.Equal(t, pmetric.MetricTypeGauge, mi.Type())
+						assert.Equal(t, 1, mi.Gauge().DataPoints().Len())
+						assert.Equal(t, "The number of active messages on the Service Bus queue", mi.Description())
+						assert.Equal(t, "{messages}", mi.Unit())
+						dp := mi.Gauge().DataPoints().At(0)
+						assert.Equal(t, start, dp.StartTimestamp())
+						assert.Equal(t, ts, dp.Timestamp())
+						assert.Equal(t, pmetric.NumberDataPointValueTypeInt, dp.ValueType())
+						assert.Equal(t, int64(1), dp.IntValue())
+						queueAttrVal, ok := dp.Attributes().Get("queue")
+						assert.True(t, ok)
+						assert.Equal(t, "queue-val", queueAttrVal.Str())
+					} else {
+						assert.False(t, validatedMetrics["servicebus.queue.active_messages"], "Found a duplicate in the metrics slice: servicebus.queue.active_messages")
+						validatedMetrics["servicebus.queue.active_messages"] = true
+						assert.Equal(t, pmetric.MetricTypeGauge, mi.Type())
+						// 2 points: the merged one above, plus one with a different timestamp that must not have merged with it.
+						assert.Equal(t, 2, mi.Gauge().DataPoints().Len())
+						assert.Equal(t, ts+1, mi.Gauge().DataPoints().At(1).Timestamp())
+						assert.Equal(t, "The number of active messages on the Service Bus queue", mi.Description())
+						assert.Equal(t, "{messages}", mi.Unit())
+						dp := mi.Gauge().DataPoints().At(0)
+						assert.Equal(t, start, dp.StartTimestamp())
+						assert.Equal(t, ts, dp.Timestamp())
+						assert.Equal(t, pmetric.NumberDataPointValueTypeInt, dp.ValueType())
+						switch aggMap["servicebus.queue.active_messages"] {
+						case "sum":
+							assert.Equal(t, int64(4), dp.IntValue())
+						case "avg":
+							assert.Equal(t, int64(2), dp.IntValue())
+						case "min":
+							assert.Equal(t, int64(1), dp.IntValue())
+						case "max":
+							assert.Equal(t, int64(3), dp.IntValue())
+						}
+						_, ok := dp.Attributes().Get("queue")
+						assert.False(t, ok)
+					}
 				case "servicebus.queue.current_size":
-					assert.False(t, validatedMetrics["servicebus.queue.current_size"], "Found a duplicate in the metrics slice: servicebus.queue.current_size")
-					validatedMetrics["servicebus.queue.current_size"] = true
-					assert.Equal(t, pmetric.MetricTypeGauge, ms.At(i).Type())
-					assert.Equal(t, 1, ms.At(i).Gauge().DataPoints().Len())
-					assert.Equal(t, "The current size of the Service Bus queue in bytes", ms.At(i).Description())
-					assert.Equal(t, "{bytes}", ms.At(i).Unit())
-					dp := ms.At(i).Gauge().DataPoints().At(0)
-					assert.Equal(t, start, dp.StartTimestamp())
-					assert.Equal(t, ts, dp.Timestamp())
-					assert.Equal(t, pmetric.NumberDataPointValueTypeInt, dp.ValueType())
-					assert.Equal(t, int64(1), dp.IntValue())
-					attrVal, ok := dp.Attributes().Get("queue")
-					assert.True(t, ok)
-					assert.EqualValues(t, "queue-val", attrVal.Str())
+					if tt.name != "reaggregate_set" {
+						assert.False(t, validatedMetrics["servicebus.queue.current_size"], "Found a duplicate in the metrics slice: servicebus.queue.current_size")
+						validatedMetrics["servicebus.queue.current_size"] = true
+						assert.Equal(t, pmetric.MetricTypeGauge, mi.Type())
+						assert.Equal(t, 1, mi.Gauge().DataPoints().Len())
+						assert.Equal(t, "The current size of the Service Bus queue in bytes", mi.Description())
+						assert.Equal(t, "{bytes}", mi.Unit())
+						dp := mi.Gauge().DataPoints().At(0)
+						assert.Equal(t, start, dp.StartTimestamp())
+						assert.Equal(t, ts, dp.Timestamp())
+						assert.Equal(t, pmetric.NumberDataPointValueTypeInt, dp.ValueType())
+						assert.Equal(t, int64(1), dp.IntValue())
+						queueAttrVal, ok := dp.Attributes().Get("queue")
+						assert.True(t, ok)
+						assert.Equal(t, "queue-val", queueAttrVal.Str())
+					} else {
+						assert.False(t, validatedMetrics["servicebus.queue.current_size"], "Found a duplicate in the metrics slice: servicebus.queue.current_size")
+						validatedMetrics["servicebus.queue.current_size"] = true
+						assert.Equal(t, pmetric.MetricTypeGauge, mi.Type())
+						// 2 points: the merged one above, plus one with a different timestamp that must not have merged with it.
+						assert.Equal(t, 2, mi.Gauge().DataPoints().Len())
+						assert.Equal(t, ts+1, mi.Gauge().DataPoints().At(1).Timestamp())
+						assert.Equal(t, "The current size of the Service Bus queue in bytes", mi.Description())
+						assert.Equal(t, "{bytes}", mi.Unit())
+						dp := mi.Gauge().DataPoints().At(0)
+						assert.Equal(t, start, dp.StartTimestamp())
+						assert.Equal(t, ts, dp.Timestamp())
+						assert.Equal(t, pmetric.NumberDataPointValueTypeInt, dp.ValueType())
+						switch aggMap["servicebus.queue.current_size"] {
+						case "sum":
+							assert.Equal(t, int64(4), dp.IntValue())
+						case "avg":
+							assert.Equal(t, int64(2), dp.IntValue())
+						case "min":
+							assert.Equal(t, int64(1), dp.IntValue())
+						case "max":
+							assert.Equal(t, int64(3), dp.IntValue())
+						}
+						_, ok := dp.Attributes().Get("queue")
+						assert.False(t, ok)
+					}
 				case "servicebus.queue.deadletter_messages":
-					assert.False(t, validatedMetrics["servicebus.queue.deadletter_messages"], "Found a duplicate in the metrics slice: servicebus.queue.deadletter_messages")
-					validatedMetrics["servicebus.queue.deadletter_messages"] = true
-					assert.Equal(t, pmetric.MetricTypeGauge, ms.At(i).Type())
-					assert.Equal(t, 1, ms.At(i).Gauge().DataPoints().Len())
-					assert.Equal(t, "The number of deadletter messages on the Service Bus queue", ms.At(i).Description())
-					assert.Equal(t, "{messages}", ms.At(i).Unit())
-					dp := ms.At(i).Gauge().DataPoints().At(0)
-					assert.Equal(t, start, dp.StartTimestamp())
-					assert.Equal(t, ts, dp.Timestamp())
-					assert.Equal(t, pmetric.NumberDataPointValueTypeInt, dp.ValueType())
-					assert.Equal(t, int64(1), dp.IntValue())
-					attrVal, ok := dp.Attributes().Get("queue")
-					assert.True(t, ok)
-					assert.EqualValues(t, "queue-val", attrVal.Str())
+					if tt.name != "reaggregate_set" {
+						assert.False(t, validatedMetrics["servicebus.queue.deadletter_messages"], "Found a duplicate in the metrics slice: servicebus.queue.deadletter_messages")
+						validatedMetrics["servicebus.queue.deadletter_messages"] = true
+						assert.Equal(t, pmetric.MetricTypeGauge, mi.Type())
+						assert.Equal(t, 1, mi.Gauge().DataPoints().Len())
+						assert.Equal(t, "The number of deadletter messages on the Service Bus queue", mi.Description())
+						assert.Equal(t, "{messages}", mi.Unit())
+						dp := mi.Gauge().DataPoints().At(0)
+						assert.Equal(t, start, dp.StartTimestamp())
+						assert.Equal(t, ts, dp.Timestamp())
+						assert.Equal(t, pmetric.NumberDataPointValueTypeInt, dp.ValueType())
+						assert.Equal(t, int64(1), dp.IntValue())
+						queueAttrVal, ok := dp.Attributes().Get("queue")
+						assert.True(t, ok)
+						assert.Equal(t, "queue-val", queueAttrVal.Str())
+					} else {
+						assert.False(t, validatedMetrics["servicebus.queue.deadletter_messages"], "Found a duplicate in the metrics slice: servicebus.queue.deadletter_messages")
+						validatedMetrics["servicebus.queue.deadletter_messages"] = true
+						assert.Equal(t, pmetric.MetricTypeGauge, mi.Type())
+						// 2 points: the merged one above, plus one with a different timestamp that must not have merged with it.
+						assert.Equal(t, 2, mi.Gauge().DataPoints().Len())
+						assert.Equal(t, ts+1, mi.Gauge().DataPoints().At(1).Timestamp())
+						assert.Equal(t, "The number of deadletter messages on the Service Bus queue", mi.Description())
+						assert.Equal(t, "{messages}", mi.Unit())
+						dp := mi.Gauge().DataPoints().At(0)
+						assert.Equal(t, start, dp.StartTimestamp())
+						assert.Equal(t, ts, dp.Timestamp())
+						assert.Equal(t, pmetric.NumberDataPointValueTypeInt, dp.ValueType())
+						switch aggMap["servicebus.queue.deadletter_messages"] {
+						case "sum":
+							assert.Equal(t, int64(4), dp.IntValue())
+						case "avg":
+							assert.Equal(t, int64(2), dp.IntValue())
+						case "min":
+							assert.Equal(t, int64(1), dp.IntValue())
+						case "max":
+							assert.Equal(t, int64(3), dp.IntValue())
+						}
+						_, ok := dp.Attributes().Get("queue")
+						assert.False(t, ok)
+					}
 				case "servicebus.queue.max_size":
-					assert.False(t, validatedMetrics["servicebus.queue.max_size"], "Found a duplicate in the metrics slice: servicebus.queue.max_size")
-					validatedMetrics["servicebus.queue.max_size"] = true
-					assert.Equal(t, pmetric.MetricTypeGauge, ms.At(i).Type())
-					assert.Equal(t, 1, ms.At(i).Gauge().DataPoints().Len())
-					assert.Equal(t, "The max size of the Service Bus queue in bytes", ms.At(i).Description())
-					assert.Equal(t, "{bytes}", ms.At(i).Unit())
-					dp := ms.At(i).Gauge().DataPoints().At(0)
-					assert.Equal(t, start, dp.StartTimestamp())
-					assert.Equal(t, ts, dp.Timestamp())
-					assert.Equal(t, pmetric.NumberDataPointValueTypeInt, dp.ValueType())
-					assert.Equal(t, int64(1), dp.IntValue())
-					attrVal, ok := dp.Attributes().Get("queue")
-					assert.True(t, ok)
-					assert.EqualValues(t, "queue-val", attrVal.Str())
+					if tt.name != "reaggregate_set" {
+						assert.False(t, validatedMetrics["servicebus.queue.max_size"], "Found a duplicate in the metrics slice: servicebus.queue.max_size")
+						validatedMetrics["servicebus.queue.max_size"] = true
+						assert.Equal(t, pmetric.MetricTypeGauge, mi.Type())
+						assert.Equal(t, 1, mi.Gauge().DataPoints().Len())
+						assert.Equal(t, "The max size of the Service Bus queue in bytes", mi.Description())
+						assert.Equal(t, "{bytes}", mi.Unit())
+						dp := mi.Gauge().DataPoints().At(0)
+						assert.Equal(t, start, dp.StartTimestamp())
+						assert.Equal(t, ts, dp.Timestamp())
+						assert.Equal(t, pmetric.NumberDataPointValueTypeInt, dp.ValueType())
+						assert.Equal(t, int64(1), dp.IntValue())
+						queueAttrVal, ok := dp.Attributes().Get("queue")
+						assert.True(t, ok)
+						assert.Equal(t, "queue-val", queueAttrVal.Str())
+					} else {
+						assert.False(t, validatedMetrics["servicebus.queue.max_size"], "Found a duplicate in the metrics slice: servicebus.queue.max_size")
+						validatedMetrics["servicebus.queue.max_size"] = true
+						assert.Equal(t, pmetric.MetricTypeGauge, mi.Type())
+						// 2 points: the merged one above, plus one with a different timestamp that must not have merged with it.
+						assert.Equal(t, 2, mi.Gauge().DataPoints().Len())
+						assert.Equal(t, ts+1, mi.Gauge().DataPoints().At(1).Timestamp())
+						assert.Equal(t, "The max size of the Service Bus queue in bytes", mi.Description())
+						assert.Equal(t, "{bytes}", mi.Unit())
+						dp := mi.Gauge().DataPoints().At(0)
+						assert.Equal(t, start, dp.StartTimestamp())
+						assert.Equal(t, ts, dp.Timestamp())
+						assert.Equal(t, pmetric.NumberDataPointValueTypeInt, dp.ValueType())
+						switch aggMap["servicebus.queue.max_size"] {
+						case "sum":
+							assert.Equal(t, int64(4), dp.IntValue())
+						case "avg":
+							assert.Equal(t, int64(2), dp.IntValue())
+						case "min":
+							assert.Equal(t, int64(1), dp.IntValue())
+						case "max":
+							assert.Equal(t, int64(3), dp.IntValue())
+						}
+						_, ok := dp.Attributes().Get("queue")
+						assert.False(t, ok)
+					}
 				case "servicebus.queue.scheduled_messages":
-					assert.False(t, validatedMetrics["servicebus.queue.scheduled_messages"], "Found a duplicate in the metrics slice: servicebus.queue.scheduled_messages")
-					validatedMetrics["servicebus.queue.scheduled_messages"] = true
-					assert.Equal(t, pmetric.MetricTypeGauge, ms.At(i).Type())
-					assert.Equal(t, 1, ms.At(i).Gauge().DataPoints().Len())
-					assert.Equal(t, "The number of scheduled messages on the Service Bus queue", ms.At(i).Description())
-					assert.Equal(t, "{messages}", ms.At(i).Unit())
-					dp := ms.At(i).Gauge().DataPoints().At(0)
-					assert.Equal(t, start, dp.StartTimestamp())
-					assert.Equal(t, ts, dp.Timestamp())
-					assert.Equal(t, pmetric.NumberDataPointValueTypeInt, dp.ValueType())
-					assert.Equal(t, int64(1), dp.IntValue())
-					attrVal, ok := dp.Attributes().Get("queue")
-					assert.True(t, ok)
-					assert.EqualValues(t, "queue-val", attrVal.Str())
+					if tt.name != "reaggregate_set" {
+						assert.False(t, validatedMetrics["servicebus.queue.scheduled_messages"], "Found a duplicate in the metrics slice: servicebus.queue.scheduled_messages")
+						validatedMetrics["servicebus.queue.scheduled_messages"] = true
+						assert.Equal(t, pmetric.MetricTypeGauge, mi.Type())
+						assert.Equal(t, 1, mi.Gauge().DataPoints().Len())
+						assert.Equal(t, "The number of scheduled messages on the Service Bus queue", mi.Description())
+						assert.Equal(t, "{messages}", mi.Unit())
+						dp := mi.Gauge().DataPoints().At(0)
+						assert.Equal(t, start, dp.StartTimestamp())
+						assert.Equal(t, ts, dp.Timestamp())
+						assert.Equal(t, pmetric.NumberDataPointValueTypeInt, dp.ValueType())
+						assert.Equal(t, int64(1), dp.IntValue())
+						queueAttrVal, ok := dp.Attributes().Get("queue")
+						assert.True(t, ok)
+						assert.Equal(t, "queue-val", queueAttrVal.Str())
+					} else {
+						assert.False(t, validatedMetrics["servicebus.queue.scheduled_messages"], "Found a duplicate in the metrics slice: servicebus.queue.scheduled_messages")
+						validatedMetrics["servicebus.queue.scheduled_messages"] = true
+						assert.Equal(t, pmetric.MetricTypeGauge, mi.Type())
+						// 2 points: the merged one above, plus one with a different timestamp that must not have merged with it.
+						assert.Equal(t, 2, mi.Gauge().DataPoints().Len())
+						assert.Equal(t, ts+1, mi.Gauge().DataPoints().At(1).Timestamp())
+						assert.Equal(t, "The number of scheduled messages on the Service Bus queue", mi.Description())
+						assert.Equal(t, "{messages}", mi.Unit())
+						dp := mi.Gauge().DataPoints().At(0)
+						assert.Equal(t, start, dp.StartTimestamp())
+						assert.Equal(t, ts, dp.Timestamp())
+						assert.Equal(t, pmetric.NumberDataPointValueTypeInt, dp.ValueType())
+						switch aggMap["servicebus.queue.scheduled_messages"] {
+						case "sum":
+							assert.Equal(t, int64(4), dp.IntValue())
+						case "avg":
+							assert.Equal(t, int64(2), dp.IntValue())
+						case "min":
+							assert.Equal(t, int64(1), dp.IntValue())
+						case "max":
+							assert.Equal(t, int64(3), dp.IntValue())
+						}
+						_, ok := dp.Attributes().Get("queue")
+						assert.False(t, ok)
+					}
 				case "servicebus.topic.current_size":
-					assert.False(t, validatedMetrics["servicebus.topic.current_size"], "Found a duplicate in the metrics slice: servicebus.topic.current_size")
-					validatedMetrics["servicebus.topic.current_size"] = true
-					assert.Equal(t, pmetric.MetricTypeGauge, ms.At(i).Type())
-					assert.Equal(t, 1, ms.At(i).Gauge().DataPoints().Len())
-					assert.Equal(t, "The current size of the Service Bus topic in bytes", ms.At(i).Description())
-					assert.Equal(t, "{bytes}", ms.At(i).Unit())
-					dp := ms.At(i).Gauge().DataPoints().At(0)
-					assert.Equal(t, start, dp.StartTimestamp())
-					assert.Equal(t, ts, dp.Timestamp())
-					assert.Equal(t, pmetric.NumberDataPointValueTypeInt, dp.ValueType())
-					assert.Equal(t, int64(1), dp.IntValue())
-					attrVal, ok := dp.Attributes().Get("topic")
-					assert.True(t, ok)
-					assert.EqualValues(t, "topic-val", attrVal.Str())
+					if tt.name != "reaggregate_set" {
+						assert.False(t, validatedMetrics["servicebus.topic.current_size"], "Found a duplicate in the metrics slice: servicebus.topic.current_size")
+						validatedMetrics["servicebus.topic.current_size"] = true
+						assert.Equal(t, pmetric.MetricTypeGauge, mi.Type())
+						assert.Equal(t, 1, mi.Gauge().DataPoints().Len())
+						assert.Equal(t, "The current size of the Service Bus topic in bytes", mi.Description())
+						assert.Equal(t, "{bytes}", mi.Unit())
+						dp := mi.Gauge().DataPoints().At(0)
+						assert.Equal(t, start, dp.StartTimestamp())
+						assert.Equal(t, ts, dp.Timestamp())
+						assert.Equal(t, pmetric.NumberDataPointValueTypeInt, dp.ValueType())
+						assert.Equal(t, int64(1), dp.IntValue())
+						topicAttrVal, ok := dp.Attributes().Get("topic")
+						assert.True(t, ok)
+						assert.Equal(t, "topic-val", topicAttrVal.Str())
+					} else {
+						assert.False(t, validatedMetrics["servicebus.topic.current_size"], "Found a duplicate in the metrics slice: servicebus.topic.current_size")
+						validatedMetrics["servicebus.topic.current_size"] = true
+						assert.Equal(t, pmetric.MetricTypeGauge, mi.Type())
+						// 2 points: the merged one above, plus one with a different timestamp that must not have merged with it.
+						assert.Equal(t, 2, mi.Gauge().DataPoints().Len())
+						assert.Equal(t, ts+1, mi.Gauge().DataPoints().At(1).Timestamp())
+						assert.Equal(t, "The current size of the Service Bus topic in bytes", mi.Description())
+						assert.Equal(t, "{bytes}", mi.Unit())
+						dp := mi.Gauge().DataPoints().At(0)
+						assert.Equal(t, start, dp.StartTimestamp())
+						assert.Equal(t, ts, dp.Timestamp())
+						assert.Equal(t, pmetric.NumberDataPointValueTypeInt, dp.ValueType())
+						switch aggMap["servicebus.topic.current_size"] {
+						case "sum":
+							assert.Equal(t, int64(4), dp.IntValue())
+						case "avg":
+							assert.Equal(t, int64(2), dp.IntValue())
+						case "min":
+							assert.Equal(t, int64(1), dp.IntValue())
+						case "max":
+							assert.Equal(t, int64(3), dp.IntValue())
+						}
+						_, ok := dp.Attributes().Get("topic")
+						assert.False(t, ok)
+					}
 				case "servicebus.topic.max_size":
-					assert.False(t, validatedMetrics["servicebus.topic.max_size"], "Found a duplicate in the metrics slice: servicebus.topic.max_size")
-					validatedMetrics["servicebus.topic.max_size"] = true
-					assert.Equal(t, pmetric.MetricTypeGauge, ms.At(i).Type())
-					assert.Equal(t, 1, ms.At(i).Gauge().DataPoints().Len())
-					assert.Equal(t, "The max size of the Service Bus topic in bytes", ms.At(i).Description())
-					assert.Equal(t, "{bytes}", ms.At(i).Unit())
-					dp := ms.At(i).Gauge().DataPoints().At(0)
-					assert.Equal(t, start, dp.StartTimestamp())
-					assert.Equal(t, ts, dp.Timestamp())
-					assert.Equal(t, pmetric.NumberDataPointValueTypeInt, dp.ValueType())
-					assert.Equal(t, int64(1), dp.IntValue())
-					attrVal, ok := dp.Attributes().Get("topic")
-					assert.True(t, ok)
-					assert.EqualValues(t, "topic-val", attrVal.Str())
+					if tt.name != "reaggregate_set" {
+						assert.False(t, validatedMetrics["servicebus.topic.max_size"], "Found a duplicate in the metrics slice: servicebus.topic.max_size")
+						validatedMetrics["servicebus.topic.max_size"] = true
+						assert.Equal(t, pmetric.MetricTypeGauge, mi.Type())
+						assert.Equal(t, 1, mi.Gauge().DataPoints().Len())
+						assert.Equal(t, "The max size of the Service Bus topic in bytes", mi.Description())
+						assert.Equal(t, "{bytes}", mi.Unit())
+						dp := mi.Gauge().DataPoints().At(0)
+						assert.Equal(t, start, dp.StartTimestamp())
+						assert.Equal(t, ts, dp.Timestamp())
+						assert.Equal(t, pmetric.NumberDataPointValueTypeInt, dp.ValueType())
+						assert.Equal(t, int64(1), dp.IntValue())
+						topicAttrVal, ok := dp.Attributes().Get("topic")
+						assert.True(t, ok)
+						assert.Equal(t, "topic-val", topicAttrVal.Str())
+					} else {
+						assert.False(t, validatedMetrics["servicebus.topic.max_size"], "Found a duplicate in the metrics slice: servicebus.topic.max_size")
+						validatedMetrics["servicebus.topic.max_size"] = true
+						assert.Equal(t, pmetric.MetricTypeGauge, mi.Type())
+						// 2 points: the merged one above, plus one with a different timestamp that must not have merged with it.
+						assert.Equal(t, 2, mi.Gauge().DataPoints().Len())
+						assert.Equal(t, ts+1, mi.Gauge().DataPoints().At(1).Timestamp())
+						assert.Equal(t, "The max size of the Service Bus topic in bytes", mi.Description())
+						assert.Equal(t, "{bytes}", mi.Unit())
+						dp := mi.Gauge().DataPoints().At(0)
+						assert.Equal(t, start, dp.StartTimestamp())
+						assert.Equal(t, ts, dp.Timestamp())
+						assert.Equal(t, pmetric.NumberDataPointValueTypeInt, dp.ValueType())
+						switch aggMap["servicebus.topic.max_size"] {
+						case "sum":
+							assert.Equal(t, int64(4), dp.IntValue())
+						case "avg":
+							assert.Equal(t, int64(2), dp.IntValue())
+						case "min":
+							assert.Equal(t, int64(1), dp.IntValue())
+						case "max":
+							assert.Equal(t, int64(3), dp.IntValue())
+						}
+						_, ok := dp.Attributes().Get("topic")
+						assert.False(t, ok)
+					}
 				case "servicebus.topic.scheduled_messages":
-					assert.False(t, validatedMetrics["servicebus.topic.scheduled_messages"], "Found a duplicate in the metrics slice: servicebus.topic.scheduled_messages")
-					validatedMetrics["servicebus.topic.scheduled_messages"] = true
-					assert.Equal(t, pmetric.MetricTypeGauge, ms.At(i).Type())
-					assert.Equal(t, 1, ms.At(i).Gauge().DataPoints().Len())
-					assert.Equal(t, "The number of scheduled messages on the Service Bus topic", ms.At(i).Description())
-					assert.Equal(t, "{messages}", ms.At(i).Unit())
-					dp := ms.At(i).Gauge().DataPoints().At(0)
-					assert.Equal(t, start, dp.StartTimestamp())
-					assert.Equal(t, ts, dp.Timestamp())
-					assert.Equal(t, pmetric.NumberDataPointValueTypeInt, dp.ValueType())
-					assert.Equal(t, int64(1), dp.IntValue())
-					attrVal, ok := dp.Attributes().Get("topic")
-					assert.True(t, ok)
-					assert.EqualValues(t, "topic-val", attrVal.Str())
+					if tt.name != "reaggregate_set" {
+						assert.False(t, validatedMetrics["servicebus.topic.scheduled_messages"], "Found a duplicate in the metrics slice: servicebus.topic.scheduled_messages")
+						validatedMetrics["servicebus.topic.scheduled_messages"] = true
+						assert.Equal(t, pmetric.MetricTypeGauge, mi.Type())
+						assert.Equal(t, 1, mi.Gauge().DataPoints().Len())
+						assert.Equal(t, "The number of scheduled messages on the Service Bus topic", mi.Description())
+						assert.Equal(t, "{messages}", mi.Unit())
+						dp := mi.Gauge().DataPoints().At(0)
+						assert.Equal(t, start, dp.StartTimestamp())
+						assert.Equal(t, ts, dp.Timestamp())
+						assert.Equal(t, pmetric.NumberDataPointValueTypeInt, dp.ValueType())
+						assert.Equal(t, int64(1), dp.IntValue())
+						topicAttrVal, ok := dp.Attributes().Get("topic")
+						assert.True(t, ok)
+						assert.Equal(t, "topic-val", topicAttrVal.Str())
+					} else {
+						assert.False(t, validatedMetrics["servicebus.topic.scheduled_messages"], "Found a duplicate in the metrics slice: servicebus.topic.scheduled_messages")
+						validatedMetrics["servicebus.topic.scheduled_messages"] = true
+						assert.Equal(t, pmetric.MetricTypeGauge, mi.Type())
+						// 2 points: the merged one above, plus one with a different timestamp that must not have merged with it.
+						assert.Equal(t, 2, mi.Gauge().DataPoints().Len())
+						assert.Equal(t, ts+1, mi.Gauge().DataPoints().At(1).Timestamp())
+						assert.Equal(t, "The number of scheduled messages on the Service Bus topic", mi.Description())
+						assert.Equal(t, "{messages}", mi.Unit())
+						dp := mi.Gauge().DataPoints().At(0)
+						assert.Equal(t, start, dp.StartTimestamp())
+						assert.Equal(t, ts, dp.Timestamp())
+						assert.Equal(t, pmetric.NumberDataPointValueTypeInt, dp.ValueType())
+						switch aggMap["servicebus.topic.scheduled_messages"] {
+						case "sum":
+							assert.Equal(t, int64(4), dp.IntValue())
+						case "avg":
+							assert.Equal(t, int64(2), dp.IntValue())
+						case "min":
+							assert.Equal(t, int64(1), dp.IntValue())
+						case "max":
+							assert.Equal(t, int64(3), dp.IntValue())
+						}
+						_, ok := dp.Attributes().Get("topic")
+						assert.False(t, ok)
+					}
 				case "servicebus.topic.subscription.active_messages":
-					assert.False(t, validatedMetrics["servicebus.topic.subscription.active_messages"], "Found a duplicate in the metrics slice: servicebus.topic.subscription.active_messages")
-					validatedMetrics["servicebus.topic.subscription.active_messages"] = true
-					assert.Equal(t, pmetric.MetricTypeGauge, ms.At(i).Type())
-					assert.Equal(t, 1, ms.At(i).Gauge().DataPoints().Len())
-					assert.Equal(t, "The number of active messages on the Service Bus topic subscription", ms.At(i).Description())
-					assert.Equal(t, "{messages}", ms.At(i).Unit())
-					dp := ms.At(i).Gauge().DataPoints().At(0)
-					assert.Equal(t, start, dp.StartTimestamp())
-					assert.Equal(t, ts, dp.Timestamp())
-					assert.Equal(t, pmetric.NumberDataPointValueTypeInt, dp.ValueType())
-					assert.Equal(t, int64(1), dp.IntValue())
-					attrVal, ok := dp.Attributes().Get("topic")
-					assert.True(t, ok)
-					assert.EqualValues(t, "topic-val", attrVal.Str())
-					attrVal, ok = dp.Attributes().Get("subscription")
-					assert.True(t, ok)
-					assert.EqualValues(t, "subscription-val", attrVal.Str())
+					if tt.name != "reaggregate_set" {
+						assert.False(t, validatedMetrics["servicebus.topic.subscription.active_messages"], "Found a duplicate in the metrics slice: servicebus.topic.subscription.active_messages")
+						validatedMetrics["servicebus.topic.subscription.active_messages"] = true
+						assert.Equal(t, pmetric.MetricTypeGauge, mi.Type())
+						assert.Equal(t, 1, mi.Gauge().DataPoints().Len())
+						assert.Equal(t, "The number of active messages on the Service Bus topic subscription", mi.Description())
+						assert.Equal(t, "{messages}", mi.Unit())
+						dp := mi.Gauge().DataPoints().At(0)
+						assert.Equal(t, start, dp.StartTimestamp())
+						assert.Equal(t, ts, dp.Timestamp())
+						assert.Equal(t, pmetric.NumberDataPointValueTypeInt, dp.ValueType())
+						assert.Equal(t, int64(1), dp.IntValue())
+						topicAttrVal, ok := dp.Attributes().Get("topic")
+						assert.True(t, ok)
+						assert.Equal(t, "topic-val", topicAttrVal.Str())
+						subscriptionAttrVal, ok := dp.Attributes().Get("subscription")
+						assert.True(t, ok)
+						assert.Equal(t, "subscription-val", subscriptionAttrVal.Str())
+					} else {
+						assert.False(t, validatedMetrics["servicebus.topic.subscription.active_messages"], "Found a duplicate in the metrics slice: servicebus.topic.subscription.active_messages")
+						validatedMetrics["servicebus.topic.subscription.active_messages"] = true
+						assert.Equal(t, pmetric.MetricTypeGauge, mi.Type())
+						// 2 points: the merged one above, plus one with a different timestamp that must not have merged with it.
+						assert.Equal(t, 2, mi.Gauge().DataPoints().Len())
+						assert.Equal(t, ts+1, mi.Gauge().DataPoints().At(1).Timestamp())
+						assert.Equal(t, "The number of active messages on the Service Bus topic subscription", mi.Description())
+						assert.Equal(t, "{messages}", mi.Unit())
+						dp := mi.Gauge().DataPoints().At(0)
+						assert.Equal(t, start, dp.StartTimestamp())
+						assert.Equal(t, ts, dp.Timestamp())
+						assert.Equal(t, pmetric.NumberDataPointValueTypeInt, dp.ValueType())
+						switch aggMap["servicebus.topic.subscription.active_messages"] {
+						case "sum":
+							assert.Equal(t, int64(4), dp.IntValue())
+						case "avg":
+							assert.Equal(t, int64(2), dp.IntValue())
+						case "min":
+							assert.Equal(t, int64(1), dp.IntValue())
+						case "max":
+							assert.Equal(t, int64(3), dp.IntValue())
+						}
+						_, ok := dp.Attributes().Get("topic")
+						assert.False(t, ok)
+						_, ok = dp.Attributes().Get("subscription")
+						assert.False(t, ok)
+					}
 				case "servicebus.topic.subscription.deadletter_messages":
-					assert.False(t, validatedMetrics["servicebus.topic.subscription.deadletter_messages"], "Found a duplicate in the metrics slice: servicebus.topic.subscription.deadletter_messages")
-					validatedMetrics["servicebus.topic.subscription.deadletter_messages"] = true
-					assert.Equal(t, pmetric.MetricTypeGauge, ms.At(i).Type())
-					assert.Equal(t, 1, ms.At(i).Gauge().DataPoints().Len())
-					assert.Equal(t, "The number of deadletter messages on the Service Bus topic subscription", ms.At(i).Description())
-					assert.Equal(t, "{messages}", ms.At(i).Unit())
-					dp := ms.At(i).Gauge().DataPoints().At(0)
-					assert.Equal(t, start, dp.StartTimestamp())
-					assert.Equal(t, ts, dp.Timestamp())
-					assert.Equal(t, pmetric.NumberDataPointValueTypeInt, dp.ValueType())
-					assert.Equal(t, int64(1), dp.IntValue())
-					attrVal, ok := dp.Attributes().Get("topic")
-					assert.True(t, ok)
-					assert.EqualValues(t, "topic-val", attrVal.Str())
-					attrVal, ok = dp.Attributes().Get("subscription")
-					assert.True(t, ok)
-					assert.EqualValues(t, "subscription-val", attrVal.Str())
+					if tt.name != "reaggregate_set" {
+						assert.False(t, validatedMetrics["servicebus.topic.subscription.deadletter_messages"], "Found a duplicate in the metrics slice: servicebus.topic.subscription.deadletter_messages")
+						validatedMetrics["servicebus.topic.subscription.deadletter_messages"] = true
+						assert.Equal(t, pmetric.MetricTypeGauge, mi.Type())
+						assert.Equal(t, 1, mi.Gauge().DataPoints().Len())
+						assert.Equal(t, "The number of deadletter messages on the Service Bus topic subscription", mi.Description())
+						assert.Equal(t, "{messages}", mi.Unit())
+						dp := mi.Gauge().DataPoints().At(0)
+						assert.Equal(t, start, dp.StartTimestamp())
+						assert.Equal(t, ts, dp.Timestamp())
+						assert.Equal(t, pmetric.NumberDataPointValueTypeInt, dp.ValueType())
+						assert.Equal(t, int64(1), dp.IntValue())
+						topicAttrVal, ok := dp.Attributes().Get("topic")
+						assert.True(t, ok)
+						assert.Equal(t, "topic-val", topicAttrVal.Str())
+						subscriptionAttrVal, ok := dp.Attributes().Get("subscription")
+						assert.True(t, ok)
+						assert.Equal(t, "subscription-val", subscriptionAttrVal.Str())
+					} else {
+						assert.False(t, validatedMetrics["servicebus.topic.subscription.deadletter_messages"], "Found a duplicate in the metrics slice: servicebus.topic.subscription.deadletter_messages")
+						validatedMetrics["servicebus.topic.subscription.deadletter_messages"] = true
+						assert.Equal(t, pmetric.MetricTypeGauge, mi.Type())
+						// 2 points: the merged one above, plus one with a different timestamp that must not have merged with it.
+						assert.Equal(t, 2, mi.Gauge().DataPoints().Len())
+						assert.Equal(t, ts+1, mi.Gauge().DataPoints().At(1).Timestamp())
+						assert.Equal(t, "The number of deadletter messages on the Service Bus topic subscription", mi.Description())
+						assert.Equal(t, "{messages}", mi.Unit())
+						dp := mi.Gauge().DataPoints().At(0)
+						assert.Equal(t, start, dp.StartTimestamp())
+						assert.Equal(t, ts, dp.Timestamp())
+						assert.Equal(t, pmetric.NumberDataPointValueTypeInt, dp.ValueType())
+						switch aggMap["servicebus.topic.subscription.deadletter_messages"] {
+						case "sum":
+							assert.Equal(t, int64(4), dp.IntValue())
+						case "avg":
+							assert.Equal(t, int64(2), dp.IntValue())
+						case "min":
+							assert.Equal(t, int64(1), dp.IntValue())
+						case "max":
+							assert.Equal(t, int64(3), dp.IntValue())
+						}
+						_, ok := dp.Attributes().Get("topic")
+						assert.False(t, ok)
+						_, ok = dp.Attributes().Get("subscription")
+						assert.False(t, ok)
+					}
 				}
 			}
 		})
