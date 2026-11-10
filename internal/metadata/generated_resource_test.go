@@ -29,11 +29,10 @@ func TestResourceBuilder(t *testing.T) {
 			default:
 				assert.Failf(t, "unexpected test case: %s", tt)
 			}
-
-			val, ok := res.Attributes().Get("servicebus.namespace.name")
+			servicebusNamespaceNameAttrVal, ok := res.Attributes().Get("servicebus.namespace.name")
 			assert.True(t, ok)
 			if ok {
-				assert.EqualValues(t, "servicebus.namespace.name-val", val.Str())
+				assert.Equal(t, "servicebus.namespace.name-val", servicebusNamespaceNameAttrVal.Str())
 			}
 		})
 	}

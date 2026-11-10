@@ -3,19 +3,99 @@
 package metadata
 
 import (
-	"go.opentelemetry.io/collector/filter"
-	"time"
-
 	"go.opentelemetry.io/collector/component"
+	"go.opentelemetry.io/collector/filter"
 	"go.opentelemetry.io/collector/pdata/pcommon"
 	"go.opentelemetry.io/collector/pdata/pmetric"
+	"go.opentelemetry.io/collector/pdata/xpdata/xhash"
 	"go.opentelemetry.io/collector/receiver"
+	"slices"
+	"time"
 )
 
+const (
+	AggregationStrategySum = "sum"
+	AggregationStrategyAvg = "avg"
+	AggregationStrategyMin = "min"
+	AggregationStrategyMax = "max"
+)
+
+// dataPointKey hashes dp's attributes and timestamps for O(1) dedup lookup.
+func dataPointKey(dp pmetric.NumberDataPoint) uint64 {
+	return xhash.Hash64(
+		xhash.WithMap(dp.Attributes()),
+		xhash.WithUint64(uint64(dp.StartTimestamp())),
+		xhash.WithUint64(uint64(dp.Timestamp())),
+	)
+}
+
+var MetricsInfo = metricsInfo{
+	ServicebusQueueActiveMessages: metricInfo{
+		Name:       "servicebus.queue.active_messages",
+		Attributes: []string{"queue"},
+	},
+	ServicebusQueueCurrentSize: metricInfo{
+		Name:       "servicebus.queue.current_size",
+		Attributes: []string{"queue"},
+	},
+	ServicebusQueueDeadletterMessages: metricInfo{
+		Name:       "servicebus.queue.deadletter_messages",
+		Attributes: []string{"queue"},
+	},
+	ServicebusQueueMaxSize: metricInfo{
+		Name:       "servicebus.queue.max_size",
+		Attributes: []string{"queue"},
+	},
+	ServicebusQueueScheduledMessages: metricInfo{
+		Name:       "servicebus.queue.scheduled_messages",
+		Attributes: []string{"queue"},
+	},
+	ServicebusTopicCurrentSize: metricInfo{
+		Name:       "servicebus.topic.current_size",
+		Attributes: []string{"topic"},
+	},
+	ServicebusTopicMaxSize: metricInfo{
+		Name:       "servicebus.topic.max_size",
+		Attributes: []string{"topic"},
+	},
+	ServicebusTopicScheduledMessages: metricInfo{
+		Name:       "servicebus.topic.scheduled_messages",
+		Attributes: []string{"topic"},
+	},
+	ServicebusTopicSubscriptionActiveMessages: metricInfo{
+		Name:       "servicebus.topic.subscription.active_messages",
+		Attributes: []string{"topic", "subscription"},
+	},
+	ServicebusTopicSubscriptionDeadletterMessages: metricInfo{
+		Name:       "servicebus.topic.subscription.deadletter_messages",
+		Attributes: []string{"topic", "subscription"},
+	},
+}
+
+type metricsInfo struct {
+	ServicebusQueueActiveMessages                 metricInfo
+	ServicebusQueueCurrentSize                    metricInfo
+	ServicebusQueueDeadletterMessages             metricInfo
+	ServicebusQueueMaxSize                        metricInfo
+	ServicebusQueueScheduledMessages              metricInfo
+	ServicebusTopicCurrentSize                    metricInfo
+	ServicebusTopicMaxSize                        metricInfo
+	ServicebusTopicScheduledMessages              metricInfo
+	ServicebusTopicSubscriptionActiveMessages     metricInfo
+	ServicebusTopicSubscriptionDeadletterMessages metricInfo
+}
+
+type metricInfo struct {
+	Name       string
+	Attributes []string
+}
+
 type metricServicebusQueueActiveMessages struct {
-	data     pmetric.Metric // data buffer for generated metric.
-	config   MetricConfig   // metric config provided by user.
-	capacity int            // max observed number of data points added to the metric.
+	data          pmetric.Metric                            // data buffer for generated metric.
+	config        ServicebusQueueActiveMessagesMetricConfig // metric config provided by user.
+	capacity      int                                       // max observed number of data points added to the metric.
+	aggDataPoints []int64                                   // slice containing number of aggregated datapoints at each index
+	dpIndex       map[uint64]int                            // maps a data point's hash to its index, for O(1) dedup lookup.
 }
 
 // init fills servicebus.queue.active_messages metric with initial data.
@@ -25,17 +105,49 @@ func (m *metricServicebusQueueActiveMessages) init() {
 	m.data.SetUnit("{messages}")
 	m.data.SetEmptyGauge()
 	m.data.Gauge().DataPoints().EnsureCapacity(m.capacity)
+	m.aggDataPoints = m.aggDataPoints[:0]
+	m.dpIndex = make(map[uint64]int, m.capacity)
 }
 
 func (m *metricServicebusQueueActiveMessages) recordDataPoint(start pcommon.Timestamp, ts pcommon.Timestamp, val int64, queueAttributeValue string) {
 	if !m.config.Enabled {
 		return
 	}
-	dp := m.data.Gauge().DataPoints().AppendEmpty()
+
+	dp := pmetric.NewNumberDataPoint()
 	dp.SetStartTimestamp(start)
 	dp.SetTimestamp(ts)
+	if slices.Contains(m.config.EnabledAttributes, ServicebusQueueActiveMessagesMetricAttributeKeyQueue) {
+		dp.Attributes().PutStr("queue", queueAttributeValue)
+	}
+
+	var s string
+	key := dataPointKey(dp)
+	dps := m.data.Gauge().DataPoints()
+	if i, ok := m.dpIndex[key]; ok {
+		dpi := dps.At(i)
+		switch s = m.config.AggregationStrategy; s {
+		case AggregationStrategySum, AggregationStrategyAvg:
+			dpi.SetIntValue(dpi.IntValue() + val)
+			m.aggDataPoints[i] += 1
+			return
+		case AggregationStrategyMin:
+			if dpi.IntValue() > val {
+				dpi.SetIntValue(val)
+			}
+			return
+		case AggregationStrategyMax:
+			if dpi.IntValue() < val {
+				dpi.SetIntValue(val)
+			}
+			return
+		}
+	}
+
 	dp.SetIntValue(val)
-	dp.Attributes().PutStr("queue", queueAttributeValue)
+	m.aggDataPoints = append(m.aggDataPoints, 1)
+	m.dpIndex[key] = dps.Len()
+	dp.MoveTo(dps.AppendEmpty())
 }
 
 // updateCapacity saves max length of data point slices that will be used for the slice capacity.
@@ -48,14 +160,20 @@ func (m *metricServicebusQueueActiveMessages) updateCapacity() {
 // emit appends recorded metric data to a metrics slice and prepares it for recording another set of data points.
 func (m *metricServicebusQueueActiveMessages) emit(metrics pmetric.MetricSlice) {
 	if m.config.Enabled && m.data.Gauge().DataPoints().Len() > 0 {
+		if m.config.AggregationStrategy == AggregationStrategyAvg {
+			for i, aggCount := range m.aggDataPoints {
+				m.data.Gauge().DataPoints().At(i).SetIntValue(m.data.Gauge().DataPoints().At(i).IntValue() / aggCount)
+			}
+		}
 		m.updateCapacity()
 		m.data.MoveTo(metrics.AppendEmpty())
 		m.init()
 	}
 }
 
-func newMetricServicebusQueueActiveMessages(cfg MetricConfig) metricServicebusQueueActiveMessages {
+func newMetricServicebusQueueActiveMessages(cfg ServicebusQueueActiveMessagesMetricConfig) metricServicebusQueueActiveMessages {
 	m := metricServicebusQueueActiveMessages{config: cfg}
+
 	if cfg.Enabled {
 		m.data = pmetric.NewMetric()
 		m.init()
@@ -64,9 +182,11 @@ func newMetricServicebusQueueActiveMessages(cfg MetricConfig) metricServicebusQu
 }
 
 type metricServicebusQueueCurrentSize struct {
-	data     pmetric.Metric // data buffer for generated metric.
-	config   MetricConfig   // metric config provided by user.
-	capacity int            // max observed number of data points added to the metric.
+	data          pmetric.Metric                         // data buffer for generated metric.
+	config        ServicebusQueueCurrentSizeMetricConfig // metric config provided by user.
+	capacity      int                                    // max observed number of data points added to the metric.
+	aggDataPoints []int64                                // slice containing number of aggregated datapoints at each index
+	dpIndex       map[uint64]int                         // maps a data point's hash to its index, for O(1) dedup lookup.
 }
 
 // init fills servicebus.queue.current_size metric with initial data.
@@ -76,17 +196,49 @@ func (m *metricServicebusQueueCurrentSize) init() {
 	m.data.SetUnit("{bytes}")
 	m.data.SetEmptyGauge()
 	m.data.Gauge().DataPoints().EnsureCapacity(m.capacity)
+	m.aggDataPoints = m.aggDataPoints[:0]
+	m.dpIndex = make(map[uint64]int, m.capacity)
 }
 
 func (m *metricServicebusQueueCurrentSize) recordDataPoint(start pcommon.Timestamp, ts pcommon.Timestamp, val int64, queueAttributeValue string) {
 	if !m.config.Enabled {
 		return
 	}
-	dp := m.data.Gauge().DataPoints().AppendEmpty()
+
+	dp := pmetric.NewNumberDataPoint()
 	dp.SetStartTimestamp(start)
 	dp.SetTimestamp(ts)
+	if slices.Contains(m.config.EnabledAttributes, ServicebusQueueCurrentSizeMetricAttributeKeyQueue) {
+		dp.Attributes().PutStr("queue", queueAttributeValue)
+	}
+
+	var s string
+	key := dataPointKey(dp)
+	dps := m.data.Gauge().DataPoints()
+	if i, ok := m.dpIndex[key]; ok {
+		dpi := dps.At(i)
+		switch s = m.config.AggregationStrategy; s {
+		case AggregationStrategySum, AggregationStrategyAvg:
+			dpi.SetIntValue(dpi.IntValue() + val)
+			m.aggDataPoints[i] += 1
+			return
+		case AggregationStrategyMin:
+			if dpi.IntValue() > val {
+				dpi.SetIntValue(val)
+			}
+			return
+		case AggregationStrategyMax:
+			if dpi.IntValue() < val {
+				dpi.SetIntValue(val)
+			}
+			return
+		}
+	}
+
 	dp.SetIntValue(val)
-	dp.Attributes().PutStr("queue", queueAttributeValue)
+	m.aggDataPoints = append(m.aggDataPoints, 1)
+	m.dpIndex[key] = dps.Len()
+	dp.MoveTo(dps.AppendEmpty())
 }
 
 // updateCapacity saves max length of data point slices that will be used for the slice capacity.
@@ -99,14 +251,20 @@ func (m *metricServicebusQueueCurrentSize) updateCapacity() {
 // emit appends recorded metric data to a metrics slice and prepares it for recording another set of data points.
 func (m *metricServicebusQueueCurrentSize) emit(metrics pmetric.MetricSlice) {
 	if m.config.Enabled && m.data.Gauge().DataPoints().Len() > 0 {
+		if m.config.AggregationStrategy == AggregationStrategyAvg {
+			for i, aggCount := range m.aggDataPoints {
+				m.data.Gauge().DataPoints().At(i).SetIntValue(m.data.Gauge().DataPoints().At(i).IntValue() / aggCount)
+			}
+		}
 		m.updateCapacity()
 		m.data.MoveTo(metrics.AppendEmpty())
 		m.init()
 	}
 }
 
-func newMetricServicebusQueueCurrentSize(cfg MetricConfig) metricServicebusQueueCurrentSize {
+func newMetricServicebusQueueCurrentSize(cfg ServicebusQueueCurrentSizeMetricConfig) metricServicebusQueueCurrentSize {
 	m := metricServicebusQueueCurrentSize{config: cfg}
+
 	if cfg.Enabled {
 		m.data = pmetric.NewMetric()
 		m.init()
@@ -115,9 +273,11 @@ func newMetricServicebusQueueCurrentSize(cfg MetricConfig) metricServicebusQueue
 }
 
 type metricServicebusQueueDeadletterMessages struct {
-	data     pmetric.Metric // data buffer for generated metric.
-	config   MetricConfig   // metric config provided by user.
-	capacity int            // max observed number of data points added to the metric.
+	data          pmetric.Metric                                // data buffer for generated metric.
+	config        ServicebusQueueDeadletterMessagesMetricConfig // metric config provided by user.
+	capacity      int                                           // max observed number of data points added to the metric.
+	aggDataPoints []int64                                       // slice containing number of aggregated datapoints at each index
+	dpIndex       map[uint64]int                                // maps a data point's hash to its index, for O(1) dedup lookup.
 }
 
 // init fills servicebus.queue.deadletter_messages metric with initial data.
@@ -127,17 +287,49 @@ func (m *metricServicebusQueueDeadletterMessages) init() {
 	m.data.SetUnit("{messages}")
 	m.data.SetEmptyGauge()
 	m.data.Gauge().DataPoints().EnsureCapacity(m.capacity)
+	m.aggDataPoints = m.aggDataPoints[:0]
+	m.dpIndex = make(map[uint64]int, m.capacity)
 }
 
 func (m *metricServicebusQueueDeadletterMessages) recordDataPoint(start pcommon.Timestamp, ts pcommon.Timestamp, val int64, queueAttributeValue string) {
 	if !m.config.Enabled {
 		return
 	}
-	dp := m.data.Gauge().DataPoints().AppendEmpty()
+
+	dp := pmetric.NewNumberDataPoint()
 	dp.SetStartTimestamp(start)
 	dp.SetTimestamp(ts)
+	if slices.Contains(m.config.EnabledAttributes, ServicebusQueueDeadletterMessagesMetricAttributeKeyQueue) {
+		dp.Attributes().PutStr("queue", queueAttributeValue)
+	}
+
+	var s string
+	key := dataPointKey(dp)
+	dps := m.data.Gauge().DataPoints()
+	if i, ok := m.dpIndex[key]; ok {
+		dpi := dps.At(i)
+		switch s = m.config.AggregationStrategy; s {
+		case AggregationStrategySum, AggregationStrategyAvg:
+			dpi.SetIntValue(dpi.IntValue() + val)
+			m.aggDataPoints[i] += 1
+			return
+		case AggregationStrategyMin:
+			if dpi.IntValue() > val {
+				dpi.SetIntValue(val)
+			}
+			return
+		case AggregationStrategyMax:
+			if dpi.IntValue() < val {
+				dpi.SetIntValue(val)
+			}
+			return
+		}
+	}
+
 	dp.SetIntValue(val)
-	dp.Attributes().PutStr("queue", queueAttributeValue)
+	m.aggDataPoints = append(m.aggDataPoints, 1)
+	m.dpIndex[key] = dps.Len()
+	dp.MoveTo(dps.AppendEmpty())
 }
 
 // updateCapacity saves max length of data point slices that will be used for the slice capacity.
@@ -150,14 +342,20 @@ func (m *metricServicebusQueueDeadletterMessages) updateCapacity() {
 // emit appends recorded metric data to a metrics slice and prepares it for recording another set of data points.
 func (m *metricServicebusQueueDeadletterMessages) emit(metrics pmetric.MetricSlice) {
 	if m.config.Enabled && m.data.Gauge().DataPoints().Len() > 0 {
+		if m.config.AggregationStrategy == AggregationStrategyAvg {
+			for i, aggCount := range m.aggDataPoints {
+				m.data.Gauge().DataPoints().At(i).SetIntValue(m.data.Gauge().DataPoints().At(i).IntValue() / aggCount)
+			}
+		}
 		m.updateCapacity()
 		m.data.MoveTo(metrics.AppendEmpty())
 		m.init()
 	}
 }
 
-func newMetricServicebusQueueDeadletterMessages(cfg MetricConfig) metricServicebusQueueDeadletterMessages {
+func newMetricServicebusQueueDeadletterMessages(cfg ServicebusQueueDeadletterMessagesMetricConfig) metricServicebusQueueDeadletterMessages {
 	m := metricServicebusQueueDeadletterMessages{config: cfg}
+
 	if cfg.Enabled {
 		m.data = pmetric.NewMetric()
 		m.init()
@@ -166,9 +364,11 @@ func newMetricServicebusQueueDeadletterMessages(cfg MetricConfig) metricServiceb
 }
 
 type metricServicebusQueueMaxSize struct {
-	data     pmetric.Metric // data buffer for generated metric.
-	config   MetricConfig   // metric config provided by user.
-	capacity int            // max observed number of data points added to the metric.
+	data          pmetric.Metric                     // data buffer for generated metric.
+	config        ServicebusQueueMaxSizeMetricConfig // metric config provided by user.
+	capacity      int                                // max observed number of data points added to the metric.
+	aggDataPoints []int64                            // slice containing number of aggregated datapoints at each index
+	dpIndex       map[uint64]int                     // maps a data point's hash to its index, for O(1) dedup lookup.
 }
 
 // init fills servicebus.queue.max_size metric with initial data.
@@ -178,17 +378,49 @@ func (m *metricServicebusQueueMaxSize) init() {
 	m.data.SetUnit("{bytes}")
 	m.data.SetEmptyGauge()
 	m.data.Gauge().DataPoints().EnsureCapacity(m.capacity)
+	m.aggDataPoints = m.aggDataPoints[:0]
+	m.dpIndex = make(map[uint64]int, m.capacity)
 }
 
 func (m *metricServicebusQueueMaxSize) recordDataPoint(start pcommon.Timestamp, ts pcommon.Timestamp, val int64, queueAttributeValue string) {
 	if !m.config.Enabled {
 		return
 	}
-	dp := m.data.Gauge().DataPoints().AppendEmpty()
+
+	dp := pmetric.NewNumberDataPoint()
 	dp.SetStartTimestamp(start)
 	dp.SetTimestamp(ts)
+	if slices.Contains(m.config.EnabledAttributes, ServicebusQueueMaxSizeMetricAttributeKeyQueue) {
+		dp.Attributes().PutStr("queue", queueAttributeValue)
+	}
+
+	var s string
+	key := dataPointKey(dp)
+	dps := m.data.Gauge().DataPoints()
+	if i, ok := m.dpIndex[key]; ok {
+		dpi := dps.At(i)
+		switch s = m.config.AggregationStrategy; s {
+		case AggregationStrategySum, AggregationStrategyAvg:
+			dpi.SetIntValue(dpi.IntValue() + val)
+			m.aggDataPoints[i] += 1
+			return
+		case AggregationStrategyMin:
+			if dpi.IntValue() > val {
+				dpi.SetIntValue(val)
+			}
+			return
+		case AggregationStrategyMax:
+			if dpi.IntValue() < val {
+				dpi.SetIntValue(val)
+			}
+			return
+		}
+	}
+
 	dp.SetIntValue(val)
-	dp.Attributes().PutStr("queue", queueAttributeValue)
+	m.aggDataPoints = append(m.aggDataPoints, 1)
+	m.dpIndex[key] = dps.Len()
+	dp.MoveTo(dps.AppendEmpty())
 }
 
 // updateCapacity saves max length of data point slices that will be used for the slice capacity.
@@ -201,14 +433,20 @@ func (m *metricServicebusQueueMaxSize) updateCapacity() {
 // emit appends recorded metric data to a metrics slice and prepares it for recording another set of data points.
 func (m *metricServicebusQueueMaxSize) emit(metrics pmetric.MetricSlice) {
 	if m.config.Enabled && m.data.Gauge().DataPoints().Len() > 0 {
+		if m.config.AggregationStrategy == AggregationStrategyAvg {
+			for i, aggCount := range m.aggDataPoints {
+				m.data.Gauge().DataPoints().At(i).SetIntValue(m.data.Gauge().DataPoints().At(i).IntValue() / aggCount)
+			}
+		}
 		m.updateCapacity()
 		m.data.MoveTo(metrics.AppendEmpty())
 		m.init()
 	}
 }
 
-func newMetricServicebusQueueMaxSize(cfg MetricConfig) metricServicebusQueueMaxSize {
+func newMetricServicebusQueueMaxSize(cfg ServicebusQueueMaxSizeMetricConfig) metricServicebusQueueMaxSize {
 	m := metricServicebusQueueMaxSize{config: cfg}
+
 	if cfg.Enabled {
 		m.data = pmetric.NewMetric()
 		m.init()
@@ -217,9 +455,11 @@ func newMetricServicebusQueueMaxSize(cfg MetricConfig) metricServicebusQueueMaxS
 }
 
 type metricServicebusQueueScheduledMessages struct {
-	data     pmetric.Metric // data buffer for generated metric.
-	config   MetricConfig   // metric config provided by user.
-	capacity int            // max observed number of data points added to the metric.
+	data          pmetric.Metric                               // data buffer for generated metric.
+	config        ServicebusQueueScheduledMessagesMetricConfig // metric config provided by user.
+	capacity      int                                          // max observed number of data points added to the metric.
+	aggDataPoints []int64                                      // slice containing number of aggregated datapoints at each index
+	dpIndex       map[uint64]int                               // maps a data point's hash to its index, for O(1) dedup lookup.
 }
 
 // init fills servicebus.queue.scheduled_messages metric with initial data.
@@ -229,17 +469,49 @@ func (m *metricServicebusQueueScheduledMessages) init() {
 	m.data.SetUnit("{messages}")
 	m.data.SetEmptyGauge()
 	m.data.Gauge().DataPoints().EnsureCapacity(m.capacity)
+	m.aggDataPoints = m.aggDataPoints[:0]
+	m.dpIndex = make(map[uint64]int, m.capacity)
 }
 
 func (m *metricServicebusQueueScheduledMessages) recordDataPoint(start pcommon.Timestamp, ts pcommon.Timestamp, val int64, queueAttributeValue string) {
 	if !m.config.Enabled {
 		return
 	}
-	dp := m.data.Gauge().DataPoints().AppendEmpty()
+
+	dp := pmetric.NewNumberDataPoint()
 	dp.SetStartTimestamp(start)
 	dp.SetTimestamp(ts)
+	if slices.Contains(m.config.EnabledAttributes, ServicebusQueueScheduledMessagesMetricAttributeKeyQueue) {
+		dp.Attributes().PutStr("queue", queueAttributeValue)
+	}
+
+	var s string
+	key := dataPointKey(dp)
+	dps := m.data.Gauge().DataPoints()
+	if i, ok := m.dpIndex[key]; ok {
+		dpi := dps.At(i)
+		switch s = m.config.AggregationStrategy; s {
+		case AggregationStrategySum, AggregationStrategyAvg:
+			dpi.SetIntValue(dpi.IntValue() + val)
+			m.aggDataPoints[i] += 1
+			return
+		case AggregationStrategyMin:
+			if dpi.IntValue() > val {
+				dpi.SetIntValue(val)
+			}
+			return
+		case AggregationStrategyMax:
+			if dpi.IntValue() < val {
+				dpi.SetIntValue(val)
+			}
+			return
+		}
+	}
+
 	dp.SetIntValue(val)
-	dp.Attributes().PutStr("queue", queueAttributeValue)
+	m.aggDataPoints = append(m.aggDataPoints, 1)
+	m.dpIndex[key] = dps.Len()
+	dp.MoveTo(dps.AppendEmpty())
 }
 
 // updateCapacity saves max length of data point slices that will be used for the slice capacity.
@@ -252,14 +524,20 @@ func (m *metricServicebusQueueScheduledMessages) updateCapacity() {
 // emit appends recorded metric data to a metrics slice and prepares it for recording another set of data points.
 func (m *metricServicebusQueueScheduledMessages) emit(metrics pmetric.MetricSlice) {
 	if m.config.Enabled && m.data.Gauge().DataPoints().Len() > 0 {
+		if m.config.AggregationStrategy == AggregationStrategyAvg {
+			for i, aggCount := range m.aggDataPoints {
+				m.data.Gauge().DataPoints().At(i).SetIntValue(m.data.Gauge().DataPoints().At(i).IntValue() / aggCount)
+			}
+		}
 		m.updateCapacity()
 		m.data.MoveTo(metrics.AppendEmpty())
 		m.init()
 	}
 }
 
-func newMetricServicebusQueueScheduledMessages(cfg MetricConfig) metricServicebusQueueScheduledMessages {
+func newMetricServicebusQueueScheduledMessages(cfg ServicebusQueueScheduledMessagesMetricConfig) metricServicebusQueueScheduledMessages {
 	m := metricServicebusQueueScheduledMessages{config: cfg}
+
 	if cfg.Enabled {
 		m.data = pmetric.NewMetric()
 		m.init()
@@ -268,9 +546,11 @@ func newMetricServicebusQueueScheduledMessages(cfg MetricConfig) metricServicebu
 }
 
 type metricServicebusTopicCurrentSize struct {
-	data     pmetric.Metric // data buffer for generated metric.
-	config   MetricConfig   // metric config provided by user.
-	capacity int            // max observed number of data points added to the metric.
+	data          pmetric.Metric                         // data buffer for generated metric.
+	config        ServicebusTopicCurrentSizeMetricConfig // metric config provided by user.
+	capacity      int                                    // max observed number of data points added to the metric.
+	aggDataPoints []int64                                // slice containing number of aggregated datapoints at each index
+	dpIndex       map[uint64]int                         // maps a data point's hash to its index, for O(1) dedup lookup.
 }
 
 // init fills servicebus.topic.current_size metric with initial data.
@@ -280,17 +560,49 @@ func (m *metricServicebusTopicCurrentSize) init() {
 	m.data.SetUnit("{bytes}")
 	m.data.SetEmptyGauge()
 	m.data.Gauge().DataPoints().EnsureCapacity(m.capacity)
+	m.aggDataPoints = m.aggDataPoints[:0]
+	m.dpIndex = make(map[uint64]int, m.capacity)
 }
 
 func (m *metricServicebusTopicCurrentSize) recordDataPoint(start pcommon.Timestamp, ts pcommon.Timestamp, val int64, topicAttributeValue string) {
 	if !m.config.Enabled {
 		return
 	}
-	dp := m.data.Gauge().DataPoints().AppendEmpty()
+
+	dp := pmetric.NewNumberDataPoint()
 	dp.SetStartTimestamp(start)
 	dp.SetTimestamp(ts)
+	if slices.Contains(m.config.EnabledAttributes, ServicebusTopicCurrentSizeMetricAttributeKeyTopic) {
+		dp.Attributes().PutStr("topic", topicAttributeValue)
+	}
+
+	var s string
+	key := dataPointKey(dp)
+	dps := m.data.Gauge().DataPoints()
+	if i, ok := m.dpIndex[key]; ok {
+		dpi := dps.At(i)
+		switch s = m.config.AggregationStrategy; s {
+		case AggregationStrategySum, AggregationStrategyAvg:
+			dpi.SetIntValue(dpi.IntValue() + val)
+			m.aggDataPoints[i] += 1
+			return
+		case AggregationStrategyMin:
+			if dpi.IntValue() > val {
+				dpi.SetIntValue(val)
+			}
+			return
+		case AggregationStrategyMax:
+			if dpi.IntValue() < val {
+				dpi.SetIntValue(val)
+			}
+			return
+		}
+	}
+
 	dp.SetIntValue(val)
-	dp.Attributes().PutStr("topic", topicAttributeValue)
+	m.aggDataPoints = append(m.aggDataPoints, 1)
+	m.dpIndex[key] = dps.Len()
+	dp.MoveTo(dps.AppendEmpty())
 }
 
 // updateCapacity saves max length of data point slices that will be used for the slice capacity.
@@ -303,14 +615,20 @@ func (m *metricServicebusTopicCurrentSize) updateCapacity() {
 // emit appends recorded metric data to a metrics slice and prepares it for recording another set of data points.
 func (m *metricServicebusTopicCurrentSize) emit(metrics pmetric.MetricSlice) {
 	if m.config.Enabled && m.data.Gauge().DataPoints().Len() > 0 {
+		if m.config.AggregationStrategy == AggregationStrategyAvg {
+			for i, aggCount := range m.aggDataPoints {
+				m.data.Gauge().DataPoints().At(i).SetIntValue(m.data.Gauge().DataPoints().At(i).IntValue() / aggCount)
+			}
+		}
 		m.updateCapacity()
 		m.data.MoveTo(metrics.AppendEmpty())
 		m.init()
 	}
 }
 
-func newMetricServicebusTopicCurrentSize(cfg MetricConfig) metricServicebusTopicCurrentSize {
+func newMetricServicebusTopicCurrentSize(cfg ServicebusTopicCurrentSizeMetricConfig) metricServicebusTopicCurrentSize {
 	m := metricServicebusTopicCurrentSize{config: cfg}
+
 	if cfg.Enabled {
 		m.data = pmetric.NewMetric()
 		m.init()
@@ -319,9 +637,11 @@ func newMetricServicebusTopicCurrentSize(cfg MetricConfig) metricServicebusTopic
 }
 
 type metricServicebusTopicMaxSize struct {
-	data     pmetric.Metric // data buffer for generated metric.
-	config   MetricConfig   // metric config provided by user.
-	capacity int            // max observed number of data points added to the metric.
+	data          pmetric.Metric                     // data buffer for generated metric.
+	config        ServicebusTopicMaxSizeMetricConfig // metric config provided by user.
+	capacity      int                                // max observed number of data points added to the metric.
+	aggDataPoints []int64                            // slice containing number of aggregated datapoints at each index
+	dpIndex       map[uint64]int                     // maps a data point's hash to its index, for O(1) dedup lookup.
 }
 
 // init fills servicebus.topic.max_size metric with initial data.
@@ -331,17 +651,49 @@ func (m *metricServicebusTopicMaxSize) init() {
 	m.data.SetUnit("{bytes}")
 	m.data.SetEmptyGauge()
 	m.data.Gauge().DataPoints().EnsureCapacity(m.capacity)
+	m.aggDataPoints = m.aggDataPoints[:0]
+	m.dpIndex = make(map[uint64]int, m.capacity)
 }
 
 func (m *metricServicebusTopicMaxSize) recordDataPoint(start pcommon.Timestamp, ts pcommon.Timestamp, val int64, topicAttributeValue string) {
 	if !m.config.Enabled {
 		return
 	}
-	dp := m.data.Gauge().DataPoints().AppendEmpty()
+
+	dp := pmetric.NewNumberDataPoint()
 	dp.SetStartTimestamp(start)
 	dp.SetTimestamp(ts)
+	if slices.Contains(m.config.EnabledAttributes, ServicebusTopicMaxSizeMetricAttributeKeyTopic) {
+		dp.Attributes().PutStr("topic", topicAttributeValue)
+	}
+
+	var s string
+	key := dataPointKey(dp)
+	dps := m.data.Gauge().DataPoints()
+	if i, ok := m.dpIndex[key]; ok {
+		dpi := dps.At(i)
+		switch s = m.config.AggregationStrategy; s {
+		case AggregationStrategySum, AggregationStrategyAvg:
+			dpi.SetIntValue(dpi.IntValue() + val)
+			m.aggDataPoints[i] += 1
+			return
+		case AggregationStrategyMin:
+			if dpi.IntValue() > val {
+				dpi.SetIntValue(val)
+			}
+			return
+		case AggregationStrategyMax:
+			if dpi.IntValue() < val {
+				dpi.SetIntValue(val)
+			}
+			return
+		}
+	}
+
 	dp.SetIntValue(val)
-	dp.Attributes().PutStr("topic", topicAttributeValue)
+	m.aggDataPoints = append(m.aggDataPoints, 1)
+	m.dpIndex[key] = dps.Len()
+	dp.MoveTo(dps.AppendEmpty())
 }
 
 // updateCapacity saves max length of data point slices that will be used for the slice capacity.
@@ -354,14 +706,20 @@ func (m *metricServicebusTopicMaxSize) updateCapacity() {
 // emit appends recorded metric data to a metrics slice and prepares it for recording another set of data points.
 func (m *metricServicebusTopicMaxSize) emit(metrics pmetric.MetricSlice) {
 	if m.config.Enabled && m.data.Gauge().DataPoints().Len() > 0 {
+		if m.config.AggregationStrategy == AggregationStrategyAvg {
+			for i, aggCount := range m.aggDataPoints {
+				m.data.Gauge().DataPoints().At(i).SetIntValue(m.data.Gauge().DataPoints().At(i).IntValue() / aggCount)
+			}
+		}
 		m.updateCapacity()
 		m.data.MoveTo(metrics.AppendEmpty())
 		m.init()
 	}
 }
 
-func newMetricServicebusTopicMaxSize(cfg MetricConfig) metricServicebusTopicMaxSize {
+func newMetricServicebusTopicMaxSize(cfg ServicebusTopicMaxSizeMetricConfig) metricServicebusTopicMaxSize {
 	m := metricServicebusTopicMaxSize{config: cfg}
+
 	if cfg.Enabled {
 		m.data = pmetric.NewMetric()
 		m.init()
@@ -370,9 +728,11 @@ func newMetricServicebusTopicMaxSize(cfg MetricConfig) metricServicebusTopicMaxS
 }
 
 type metricServicebusTopicScheduledMessages struct {
-	data     pmetric.Metric // data buffer for generated metric.
-	config   MetricConfig   // metric config provided by user.
-	capacity int            // max observed number of data points added to the metric.
+	data          pmetric.Metric                               // data buffer for generated metric.
+	config        ServicebusTopicScheduledMessagesMetricConfig // metric config provided by user.
+	capacity      int                                          // max observed number of data points added to the metric.
+	aggDataPoints []int64                                      // slice containing number of aggregated datapoints at each index
+	dpIndex       map[uint64]int                               // maps a data point's hash to its index, for O(1) dedup lookup.
 }
 
 // init fills servicebus.topic.scheduled_messages metric with initial data.
@@ -382,17 +742,49 @@ func (m *metricServicebusTopicScheduledMessages) init() {
 	m.data.SetUnit("{messages}")
 	m.data.SetEmptyGauge()
 	m.data.Gauge().DataPoints().EnsureCapacity(m.capacity)
+	m.aggDataPoints = m.aggDataPoints[:0]
+	m.dpIndex = make(map[uint64]int, m.capacity)
 }
 
 func (m *metricServicebusTopicScheduledMessages) recordDataPoint(start pcommon.Timestamp, ts pcommon.Timestamp, val int64, topicAttributeValue string) {
 	if !m.config.Enabled {
 		return
 	}
-	dp := m.data.Gauge().DataPoints().AppendEmpty()
+
+	dp := pmetric.NewNumberDataPoint()
 	dp.SetStartTimestamp(start)
 	dp.SetTimestamp(ts)
+	if slices.Contains(m.config.EnabledAttributes, ServicebusTopicScheduledMessagesMetricAttributeKeyTopic) {
+		dp.Attributes().PutStr("topic", topicAttributeValue)
+	}
+
+	var s string
+	key := dataPointKey(dp)
+	dps := m.data.Gauge().DataPoints()
+	if i, ok := m.dpIndex[key]; ok {
+		dpi := dps.At(i)
+		switch s = m.config.AggregationStrategy; s {
+		case AggregationStrategySum, AggregationStrategyAvg:
+			dpi.SetIntValue(dpi.IntValue() + val)
+			m.aggDataPoints[i] += 1
+			return
+		case AggregationStrategyMin:
+			if dpi.IntValue() > val {
+				dpi.SetIntValue(val)
+			}
+			return
+		case AggregationStrategyMax:
+			if dpi.IntValue() < val {
+				dpi.SetIntValue(val)
+			}
+			return
+		}
+	}
+
 	dp.SetIntValue(val)
-	dp.Attributes().PutStr("topic", topicAttributeValue)
+	m.aggDataPoints = append(m.aggDataPoints, 1)
+	m.dpIndex[key] = dps.Len()
+	dp.MoveTo(dps.AppendEmpty())
 }
 
 // updateCapacity saves max length of data point slices that will be used for the slice capacity.
@@ -405,14 +797,20 @@ func (m *metricServicebusTopicScheduledMessages) updateCapacity() {
 // emit appends recorded metric data to a metrics slice and prepares it for recording another set of data points.
 func (m *metricServicebusTopicScheduledMessages) emit(metrics pmetric.MetricSlice) {
 	if m.config.Enabled && m.data.Gauge().DataPoints().Len() > 0 {
+		if m.config.AggregationStrategy == AggregationStrategyAvg {
+			for i, aggCount := range m.aggDataPoints {
+				m.data.Gauge().DataPoints().At(i).SetIntValue(m.data.Gauge().DataPoints().At(i).IntValue() / aggCount)
+			}
+		}
 		m.updateCapacity()
 		m.data.MoveTo(metrics.AppendEmpty())
 		m.init()
 	}
 }
 
-func newMetricServicebusTopicScheduledMessages(cfg MetricConfig) metricServicebusTopicScheduledMessages {
+func newMetricServicebusTopicScheduledMessages(cfg ServicebusTopicScheduledMessagesMetricConfig) metricServicebusTopicScheduledMessages {
 	m := metricServicebusTopicScheduledMessages{config: cfg}
+
 	if cfg.Enabled {
 		m.data = pmetric.NewMetric()
 		m.init()
@@ -421,9 +819,11 @@ func newMetricServicebusTopicScheduledMessages(cfg MetricConfig) metricServicebu
 }
 
 type metricServicebusTopicSubscriptionActiveMessages struct {
-	data     pmetric.Metric // data buffer for generated metric.
-	config   MetricConfig   // metric config provided by user.
-	capacity int            // max observed number of data points added to the metric.
+	data          pmetric.Metric                                        // data buffer for generated metric.
+	config        ServicebusTopicSubscriptionActiveMessagesMetricConfig // metric config provided by user.
+	capacity      int                                                   // max observed number of data points added to the metric.
+	aggDataPoints []int64                                               // slice containing number of aggregated datapoints at each index
+	dpIndex       map[uint64]int                                        // maps a data point's hash to its index, for O(1) dedup lookup.
 }
 
 // init fills servicebus.topic.subscription.active_messages metric with initial data.
@@ -433,18 +833,52 @@ func (m *metricServicebusTopicSubscriptionActiveMessages) init() {
 	m.data.SetUnit("{messages}")
 	m.data.SetEmptyGauge()
 	m.data.Gauge().DataPoints().EnsureCapacity(m.capacity)
+	m.aggDataPoints = m.aggDataPoints[:0]
+	m.dpIndex = make(map[uint64]int, m.capacity)
 }
 
 func (m *metricServicebusTopicSubscriptionActiveMessages) recordDataPoint(start pcommon.Timestamp, ts pcommon.Timestamp, val int64, topicAttributeValue string, subscriptionAttributeValue string) {
 	if !m.config.Enabled {
 		return
 	}
-	dp := m.data.Gauge().DataPoints().AppendEmpty()
+
+	dp := pmetric.NewNumberDataPoint()
 	dp.SetStartTimestamp(start)
 	dp.SetTimestamp(ts)
+	if slices.Contains(m.config.EnabledAttributes, ServicebusTopicSubscriptionActiveMessagesMetricAttributeKeyTopic) {
+		dp.Attributes().PutStr("topic", topicAttributeValue)
+	}
+	if slices.Contains(m.config.EnabledAttributes, ServicebusTopicSubscriptionActiveMessagesMetricAttributeKeySubscription) {
+		dp.Attributes().PutStr("subscription", subscriptionAttributeValue)
+	}
+
+	var s string
+	key := dataPointKey(dp)
+	dps := m.data.Gauge().DataPoints()
+	if i, ok := m.dpIndex[key]; ok {
+		dpi := dps.At(i)
+		switch s = m.config.AggregationStrategy; s {
+		case AggregationStrategySum, AggregationStrategyAvg:
+			dpi.SetIntValue(dpi.IntValue() + val)
+			m.aggDataPoints[i] += 1
+			return
+		case AggregationStrategyMin:
+			if dpi.IntValue() > val {
+				dpi.SetIntValue(val)
+			}
+			return
+		case AggregationStrategyMax:
+			if dpi.IntValue() < val {
+				dpi.SetIntValue(val)
+			}
+			return
+		}
+	}
+
 	dp.SetIntValue(val)
-	dp.Attributes().PutStr("topic", topicAttributeValue)
-	dp.Attributes().PutStr("subscription", subscriptionAttributeValue)
+	m.aggDataPoints = append(m.aggDataPoints, 1)
+	m.dpIndex[key] = dps.Len()
+	dp.MoveTo(dps.AppendEmpty())
 }
 
 // updateCapacity saves max length of data point slices that will be used for the slice capacity.
@@ -457,14 +891,20 @@ func (m *metricServicebusTopicSubscriptionActiveMessages) updateCapacity() {
 // emit appends recorded metric data to a metrics slice and prepares it for recording another set of data points.
 func (m *metricServicebusTopicSubscriptionActiveMessages) emit(metrics pmetric.MetricSlice) {
 	if m.config.Enabled && m.data.Gauge().DataPoints().Len() > 0 {
+		if m.config.AggregationStrategy == AggregationStrategyAvg {
+			for i, aggCount := range m.aggDataPoints {
+				m.data.Gauge().DataPoints().At(i).SetIntValue(m.data.Gauge().DataPoints().At(i).IntValue() / aggCount)
+			}
+		}
 		m.updateCapacity()
 		m.data.MoveTo(metrics.AppendEmpty())
 		m.init()
 	}
 }
 
-func newMetricServicebusTopicSubscriptionActiveMessages(cfg MetricConfig) metricServicebusTopicSubscriptionActiveMessages {
+func newMetricServicebusTopicSubscriptionActiveMessages(cfg ServicebusTopicSubscriptionActiveMessagesMetricConfig) metricServicebusTopicSubscriptionActiveMessages {
 	m := metricServicebusTopicSubscriptionActiveMessages{config: cfg}
+
 	if cfg.Enabled {
 		m.data = pmetric.NewMetric()
 		m.init()
@@ -473,9 +913,11 @@ func newMetricServicebusTopicSubscriptionActiveMessages(cfg MetricConfig) metric
 }
 
 type metricServicebusTopicSubscriptionDeadletterMessages struct {
-	data     pmetric.Metric // data buffer for generated metric.
-	config   MetricConfig   // metric config provided by user.
-	capacity int            // max observed number of data points added to the metric.
+	data          pmetric.Metric                                            // data buffer for generated metric.
+	config        ServicebusTopicSubscriptionDeadletterMessagesMetricConfig // metric config provided by user.
+	capacity      int                                                       // max observed number of data points added to the metric.
+	aggDataPoints []int64                                                   // slice containing number of aggregated datapoints at each index
+	dpIndex       map[uint64]int                                            // maps a data point's hash to its index, for O(1) dedup lookup.
 }
 
 // init fills servicebus.topic.subscription.deadletter_messages metric with initial data.
@@ -485,18 +927,52 @@ func (m *metricServicebusTopicSubscriptionDeadletterMessages) init() {
 	m.data.SetUnit("{messages}")
 	m.data.SetEmptyGauge()
 	m.data.Gauge().DataPoints().EnsureCapacity(m.capacity)
+	m.aggDataPoints = m.aggDataPoints[:0]
+	m.dpIndex = make(map[uint64]int, m.capacity)
 }
 
 func (m *metricServicebusTopicSubscriptionDeadletterMessages) recordDataPoint(start pcommon.Timestamp, ts pcommon.Timestamp, val int64, topicAttributeValue string, subscriptionAttributeValue string) {
 	if !m.config.Enabled {
 		return
 	}
-	dp := m.data.Gauge().DataPoints().AppendEmpty()
+
+	dp := pmetric.NewNumberDataPoint()
 	dp.SetStartTimestamp(start)
 	dp.SetTimestamp(ts)
+	if slices.Contains(m.config.EnabledAttributes, ServicebusTopicSubscriptionDeadletterMessagesMetricAttributeKeyTopic) {
+		dp.Attributes().PutStr("topic", topicAttributeValue)
+	}
+	if slices.Contains(m.config.EnabledAttributes, ServicebusTopicSubscriptionDeadletterMessagesMetricAttributeKeySubscription) {
+		dp.Attributes().PutStr("subscription", subscriptionAttributeValue)
+	}
+
+	var s string
+	key := dataPointKey(dp)
+	dps := m.data.Gauge().DataPoints()
+	if i, ok := m.dpIndex[key]; ok {
+		dpi := dps.At(i)
+		switch s = m.config.AggregationStrategy; s {
+		case AggregationStrategySum, AggregationStrategyAvg:
+			dpi.SetIntValue(dpi.IntValue() + val)
+			m.aggDataPoints[i] += 1
+			return
+		case AggregationStrategyMin:
+			if dpi.IntValue() > val {
+				dpi.SetIntValue(val)
+			}
+			return
+		case AggregationStrategyMax:
+			if dpi.IntValue() < val {
+				dpi.SetIntValue(val)
+			}
+			return
+		}
+	}
+
 	dp.SetIntValue(val)
-	dp.Attributes().PutStr("topic", topicAttributeValue)
-	dp.Attributes().PutStr("subscription", subscriptionAttributeValue)
+	m.aggDataPoints = append(m.aggDataPoints, 1)
+	m.dpIndex[key] = dps.Len()
+	dp.MoveTo(dps.AppendEmpty())
 }
 
 // updateCapacity saves max length of data point slices that will be used for the slice capacity.
@@ -509,14 +985,20 @@ func (m *metricServicebusTopicSubscriptionDeadletterMessages) updateCapacity() {
 // emit appends recorded metric data to a metrics slice and prepares it for recording another set of data points.
 func (m *metricServicebusTopicSubscriptionDeadletterMessages) emit(metrics pmetric.MetricSlice) {
 	if m.config.Enabled && m.data.Gauge().DataPoints().Len() > 0 {
+		if m.config.AggregationStrategy == AggregationStrategyAvg {
+			for i, aggCount := range m.aggDataPoints {
+				m.data.Gauge().DataPoints().At(i).SetIntValue(m.data.Gauge().DataPoints().At(i).IntValue() / aggCount)
+			}
+		}
 		m.updateCapacity()
 		m.data.MoveTo(metrics.AppendEmpty())
 		m.init()
 	}
 }
 
-func newMetricServicebusTopicSubscriptionDeadletterMessages(cfg MetricConfig) metricServicebusTopicSubscriptionDeadletterMessages {
+func newMetricServicebusTopicSubscriptionDeadletterMessages(cfg ServicebusTopicSubscriptionDeadletterMessagesMetricConfig) metricServicebusTopicSubscriptionDeadletterMessages {
 	m := metricServicebusTopicSubscriptionDeadletterMessages{config: cfg}
+
 	if cfg.Enabled {
 		m.data = pmetric.NewMetric()
 		m.init()
@@ -654,7 +1136,7 @@ func WithStartTimeOverride(start pcommon.Timestamp) ResourceMetricsOption {
 func (mb *MetricsBuilder) EmitForResource(options ...ResourceMetricsOption) {
 	rm := pmetric.NewResourceMetrics()
 	ils := rm.ScopeMetrics().AppendEmpty()
-	ils.Scope().SetName("go.opentelemetry.io/collector/cmd/mdatagen")
+	ils.Scope().SetName(ScopeName)
 	ils.Scope().SetVersion(mb.buildInfo.Version)
 	ils.Metrics().EnsureCapacity(mb.metricsCapacity)
 	mb.metricServicebusQueueActiveMessages.emit(ils.Metrics())

@@ -1,4 +1,4 @@
-﻿type: servicebus
+type: azureservicebus
 
 status:
   class: receiver
@@ -12,76 +12,17 @@ resource_attributes:
     type: string
 
 attributes:
-  topic:
-    description: The name of Service Bus topic
-    type: string
-    enabled: true
-  subscription:
-    description: The name of the Service Bus topic subscription
-    type: string
-    enabled: true
   queue:
     description: The name of the Service Bus queue
     type: string
-    enabled: true
+  subscription:
+    description: The name of the Service Bus topic subscription
+    type: string
+  topic:
+    description: The name of Service Bus topic
+    type: string
 
 metrics:
-  servicebus.topic.scheduled_messages:
-    description: The number of scheduled messages on the Service Bus topic
-    unit: "{messages}"
-    gauge:
-      value_type: int
-    enabled: true
-    attributes: [topic]
-  servicebus.topic.max_size:
-    description: The max size of the Service Bus topic in bytes
-    unit: "{bytes}"
-    gauge:
-      value_type: int
-    enabled: true
-    attributes: [topic]
-  servicebus.topic.current_size:
-    description: The current size of the Service Bus topic in bytes
-    unit: "{bytes}"
-    gauge:
-      value_type: int
-    enabled: true
-    attributes: [topic]
-  servicebus.topic.subscription.active_messages:
-    description: The number of active messages on the Service Bus topic subscription
-    unit: "{messages}"
-    gauge:
-      value_type: int
-    enabled: true
-    attributes: [topic, subscription]
-  servicebus.topic.subscription.deadletter_messages:
-    description: The number of deadletter messages on the Service Bus topic subscription
-    unit: "{messages}"
-    gauge:
-      value_type: int
-    enabled: true
-    attributes: [topic, subscription]
-  servicebus.queue.scheduled_messages:
-    description: The number of scheduled messages on the Service Bus queue
-    unit: "{messages}"
-    gauge:
-      value_type: int
-    enabled: true
-    attributes: [queue]
-  servicebus.queue.max_size:
-    description: The max size of the Service Bus queue in bytes
-    unit: "{bytes}"
-    gauge:
-      value_type: int
-    enabled: true
-    attributes: [queue]
-  servicebus.queue.current_size:
-    description: The current size of the Service Bus queue in bytes
-    unit: "{bytes}"
-    gauge:
-      value_type: int
-    enabled: true
-    attributes: [queue]
   servicebus.queue.active_messages:
     description: The number of active messages on the Service Bus queue
     unit: "{messages}"
@@ -89,6 +30,15 @@ metrics:
       value_type: int
     enabled: true
     attributes: [queue]
+    stability: development
+  servicebus.queue.current_size:
+    description: The current size of the Service Bus queue in bytes
+    unit: "{bytes}"
+    gauge:
+      value_type: int
+    enabled: true
+    attributes: [queue]
+    stability: development
   servicebus.queue.deadletter_messages:
     description: The number of deadletter messages on the Service Bus queue
     unit: "{messages}"
@@ -96,3 +46,65 @@ metrics:
       value_type: int
     enabled: true
     attributes: [queue]
+    stability: development
+  servicebus.queue.max_size:
+    description: The max size of the Service Bus queue in bytes
+    unit: "{bytes}"
+    gauge:
+      value_type: int
+    enabled: true
+    attributes: [queue]
+    stability: development
+  servicebus.queue.scheduled_messages:
+    description: The number of scheduled messages on the Service Bus queue
+    unit: "{messages}"
+    gauge:
+      value_type: int
+    enabled: true
+    attributes: [queue]
+    stability: development
+  servicebus.topic.current_size:
+    description: The current size of the Service Bus topic in bytes
+    unit: "{bytes}"
+    gauge:
+      value_type: int
+    enabled: true
+    attributes: [topic]
+    stability: development
+  servicebus.topic.max_size:
+    description: The max size of the Service Bus topic in bytes
+    unit: "{bytes}"
+    gauge:
+      value_type: int
+    enabled: true
+    attributes: [topic]
+    stability: development
+  servicebus.topic.scheduled_messages:
+    description: The number of scheduled messages on the Service Bus topic
+    unit: "{messages}"
+    gauge:
+      value_type: int
+    enabled: true
+    attributes: [topic]
+    stability: development
+  servicebus.topic.subscription.active_messages:
+    description: The number of active messages on the Service Bus topic subscription
+    unit: "{messages}"
+    gauge:
+      value_type: int
+    enabled: true
+    attributes: [topic, subscription]
+    stability: development
+  servicebus.topic.subscription.deadletter_messages:
+    description: The number of deadletter messages on the Service Bus topic subscription
+    unit: "{messages}"
+    gauge:
+      value_type: int
+    enabled: true
+    attributes: [topic, subscription]
+    stability: development
+
+tests:
+  config:
+    namespace_fqdn: test.servicebus.windows.net
+    auth: managed_identity

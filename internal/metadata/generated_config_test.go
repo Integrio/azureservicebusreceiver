@@ -9,6 +9,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/stretchr/testify/require"
+	"go.opentelemetry.io/collector/confmap"
 	"go.opentelemetry.io/collector/confmap/confmaptest"
 )
 
@@ -19,22 +20,62 @@ func TestMetricsBuilderConfig(t *testing.T) {
 	}{
 		{
 			name: "default",
-			want: DefaultMetricsBuilderConfig(),
+			want: NewDefaultMetricsBuilderConfig(),
 		},
 		{
 			name: "all_set",
 			want: MetricsBuilderConfig{
 				Metrics: MetricsConfig{
-					ServicebusQueueActiveMessages:                 MetricConfig{Enabled: true},
-					ServicebusQueueCurrentSize:                    MetricConfig{Enabled: true},
-					ServicebusQueueDeadletterMessages:             MetricConfig{Enabled: true},
-					ServicebusQueueMaxSize:                        MetricConfig{Enabled: true},
-					ServicebusQueueScheduledMessages:              MetricConfig{Enabled: true},
-					ServicebusTopicCurrentSize:                    MetricConfig{Enabled: true},
-					ServicebusTopicMaxSize:                        MetricConfig{Enabled: true},
-					ServicebusTopicScheduledMessages:              MetricConfig{Enabled: true},
-					ServicebusTopicSubscriptionActiveMessages:     MetricConfig{Enabled: true},
-					ServicebusTopicSubscriptionDeadletterMessages: MetricConfig{Enabled: true},
+					ServicebusQueueActiveMessages: ServicebusQueueActiveMessagesMetricConfig{
+						Enabled:             true,
+						AggregationStrategy: AggregationStrategyAvg,
+						EnabledAttributes:   []ServicebusQueueActiveMessagesMetricAttributeKey{ServicebusQueueActiveMessagesMetricAttributeKeyQueue},
+					},
+					ServicebusQueueCurrentSize: ServicebusQueueCurrentSizeMetricConfig{
+						Enabled:             true,
+						AggregationStrategy: AggregationStrategyAvg,
+						EnabledAttributes:   []ServicebusQueueCurrentSizeMetricAttributeKey{ServicebusQueueCurrentSizeMetricAttributeKeyQueue},
+					},
+					ServicebusQueueDeadletterMessages: ServicebusQueueDeadletterMessagesMetricConfig{
+						Enabled:             true,
+						AggregationStrategy: AggregationStrategyAvg,
+						EnabledAttributes:   []ServicebusQueueDeadletterMessagesMetricAttributeKey{ServicebusQueueDeadletterMessagesMetricAttributeKeyQueue},
+					},
+					ServicebusQueueMaxSize: ServicebusQueueMaxSizeMetricConfig{
+						Enabled:             true,
+						AggregationStrategy: AggregationStrategyAvg,
+						EnabledAttributes:   []ServicebusQueueMaxSizeMetricAttributeKey{ServicebusQueueMaxSizeMetricAttributeKeyQueue},
+					},
+					ServicebusQueueScheduledMessages: ServicebusQueueScheduledMessagesMetricConfig{
+						Enabled:             true,
+						AggregationStrategy: AggregationStrategyAvg,
+						EnabledAttributes:   []ServicebusQueueScheduledMessagesMetricAttributeKey{ServicebusQueueScheduledMessagesMetricAttributeKeyQueue},
+					},
+					ServicebusTopicCurrentSize: ServicebusTopicCurrentSizeMetricConfig{
+						Enabled:             true,
+						AggregationStrategy: AggregationStrategyAvg,
+						EnabledAttributes:   []ServicebusTopicCurrentSizeMetricAttributeKey{ServicebusTopicCurrentSizeMetricAttributeKeyTopic},
+					},
+					ServicebusTopicMaxSize: ServicebusTopicMaxSizeMetricConfig{
+						Enabled:             true,
+						AggregationStrategy: AggregationStrategyAvg,
+						EnabledAttributes:   []ServicebusTopicMaxSizeMetricAttributeKey{ServicebusTopicMaxSizeMetricAttributeKeyTopic},
+					},
+					ServicebusTopicScheduledMessages: ServicebusTopicScheduledMessagesMetricConfig{
+						Enabled:             true,
+						AggregationStrategy: AggregationStrategyAvg,
+						EnabledAttributes:   []ServicebusTopicScheduledMessagesMetricAttributeKey{ServicebusTopicScheduledMessagesMetricAttributeKeyTopic},
+					},
+					ServicebusTopicSubscriptionActiveMessages: ServicebusTopicSubscriptionActiveMessagesMetricConfig{
+						Enabled:             true,
+						AggregationStrategy: AggregationStrategyAvg,
+						EnabledAttributes:   []ServicebusTopicSubscriptionActiveMessagesMetricAttributeKey{ServicebusTopicSubscriptionActiveMessagesMetricAttributeKeyTopic, ServicebusTopicSubscriptionActiveMessagesMetricAttributeKeySubscription},
+					},
+					ServicebusTopicSubscriptionDeadletterMessages: ServicebusTopicSubscriptionDeadletterMessagesMetricConfig{
+						Enabled:             true,
+						AggregationStrategy: AggregationStrategyAvg,
+						EnabledAttributes:   []ServicebusTopicSubscriptionDeadletterMessagesMetricAttributeKey{ServicebusTopicSubscriptionDeadletterMessagesMetricAttributeKeyTopic, ServicebusTopicSubscriptionDeadletterMessagesMetricAttributeKeySubscription},
+					},
 				},
 				ResourceAttributes: ResourceAttributesConfig{
 					ServicebusNamespaceName: ResourceAttributeConfig{Enabled: true},
@@ -45,16 +86,56 @@ func TestMetricsBuilderConfig(t *testing.T) {
 			name: "none_set",
 			want: MetricsBuilderConfig{
 				Metrics: MetricsConfig{
-					ServicebusQueueActiveMessages:                 MetricConfig{Enabled: false},
-					ServicebusQueueCurrentSize:                    MetricConfig{Enabled: false},
-					ServicebusQueueDeadletterMessages:             MetricConfig{Enabled: false},
-					ServicebusQueueMaxSize:                        MetricConfig{Enabled: false},
-					ServicebusQueueScheduledMessages:              MetricConfig{Enabled: false},
-					ServicebusTopicCurrentSize:                    MetricConfig{Enabled: false},
-					ServicebusTopicMaxSize:                        MetricConfig{Enabled: false},
-					ServicebusTopicScheduledMessages:              MetricConfig{Enabled: false},
-					ServicebusTopicSubscriptionActiveMessages:     MetricConfig{Enabled: false},
-					ServicebusTopicSubscriptionDeadletterMessages: MetricConfig{Enabled: false},
+					ServicebusQueueActiveMessages: ServicebusQueueActiveMessagesMetricConfig{
+						Enabled:             false,
+						AggregationStrategy: AggregationStrategyAvg,
+						EnabledAttributes:   []ServicebusQueueActiveMessagesMetricAttributeKey{ServicebusQueueActiveMessagesMetricAttributeKeyQueue},
+					},
+					ServicebusQueueCurrentSize: ServicebusQueueCurrentSizeMetricConfig{
+						Enabled:             false,
+						AggregationStrategy: AggregationStrategyAvg,
+						EnabledAttributes:   []ServicebusQueueCurrentSizeMetricAttributeKey{ServicebusQueueCurrentSizeMetricAttributeKeyQueue},
+					},
+					ServicebusQueueDeadletterMessages: ServicebusQueueDeadletterMessagesMetricConfig{
+						Enabled:             false,
+						AggregationStrategy: AggregationStrategyAvg,
+						EnabledAttributes:   []ServicebusQueueDeadletterMessagesMetricAttributeKey{ServicebusQueueDeadletterMessagesMetricAttributeKeyQueue},
+					},
+					ServicebusQueueMaxSize: ServicebusQueueMaxSizeMetricConfig{
+						Enabled:             false,
+						AggregationStrategy: AggregationStrategyAvg,
+						EnabledAttributes:   []ServicebusQueueMaxSizeMetricAttributeKey{ServicebusQueueMaxSizeMetricAttributeKeyQueue},
+					},
+					ServicebusQueueScheduledMessages: ServicebusQueueScheduledMessagesMetricConfig{
+						Enabled:             false,
+						AggregationStrategy: AggregationStrategyAvg,
+						EnabledAttributes:   []ServicebusQueueScheduledMessagesMetricAttributeKey{ServicebusQueueScheduledMessagesMetricAttributeKeyQueue},
+					},
+					ServicebusTopicCurrentSize: ServicebusTopicCurrentSizeMetricConfig{
+						Enabled:             false,
+						AggregationStrategy: AggregationStrategyAvg,
+						EnabledAttributes:   []ServicebusTopicCurrentSizeMetricAttributeKey{ServicebusTopicCurrentSizeMetricAttributeKeyTopic},
+					},
+					ServicebusTopicMaxSize: ServicebusTopicMaxSizeMetricConfig{
+						Enabled:             false,
+						AggregationStrategy: AggregationStrategyAvg,
+						EnabledAttributes:   []ServicebusTopicMaxSizeMetricAttributeKey{ServicebusTopicMaxSizeMetricAttributeKeyTopic},
+					},
+					ServicebusTopicScheduledMessages: ServicebusTopicScheduledMessagesMetricConfig{
+						Enabled:             false,
+						AggregationStrategy: AggregationStrategyAvg,
+						EnabledAttributes:   []ServicebusTopicScheduledMessagesMetricAttributeKey{ServicebusTopicScheduledMessagesMetricAttributeKeyTopic},
+					},
+					ServicebusTopicSubscriptionActiveMessages: ServicebusTopicSubscriptionActiveMessagesMetricConfig{
+						Enabled:             false,
+						AggregationStrategy: AggregationStrategyAvg,
+						EnabledAttributes:   []ServicebusTopicSubscriptionActiveMessagesMetricAttributeKey{ServicebusTopicSubscriptionActiveMessagesMetricAttributeKeyTopic, ServicebusTopicSubscriptionActiveMessagesMetricAttributeKeySubscription},
+					},
+					ServicebusTopicSubscriptionDeadletterMessages: ServicebusTopicSubscriptionDeadletterMessagesMetricConfig{
+						Enabled:             false,
+						AggregationStrategy: AggregationStrategyAvg,
+						EnabledAttributes:   []ServicebusTopicSubscriptionDeadletterMessagesMetricAttributeKey{ServicebusTopicSubscriptionDeadletterMessagesMetricAttributeKeyTopic, ServicebusTopicSubscriptionDeadletterMessagesMetricAttributeKeySubscription},
+					},
 				},
 				ResourceAttributes: ResourceAttributesConfig{
 					ServicebusNamespaceName: ResourceAttributeConfig{Enabled: false},
@@ -65,10 +146,129 @@ func TestMetricsBuilderConfig(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			cfg := loadMetricsBuilderConfig(t, tt.name)
-			diff := cmp.Diff(tt.want, cfg, cmpopts.IgnoreUnexported(MetricConfig{}, ResourceAttributeConfig{}))
+			diff := cmp.Diff(tt.want, cfg, cmpopts.IgnoreUnexported(ServicebusQueueActiveMessagesMetricConfig{}, ServicebusQueueCurrentSizeMetricConfig{}, ServicebusQueueDeadletterMessagesMetricConfig{}, ServicebusQueueMaxSizeMetricConfig{}, ServicebusQueueScheduledMessagesMetricConfig{}, ServicebusTopicCurrentSizeMetricConfig{}, ServicebusTopicMaxSizeMetricConfig{}, ServicebusTopicScheduledMessagesMetricConfig{}, ServicebusTopicSubscriptionActiveMessagesMetricConfig{}, ServicebusTopicSubscriptionDeadletterMessagesMetricConfig{}, ResourceAttributeConfig{}))
 			require.Emptyf(t, diff, "Config mismatch (-expected +actual):\n%s", diff)
 		})
 	}
+}
+func TestServicebusQueueActiveMessagesMetricsConfig_Validate(t *testing.T) {
+	cfg := DefaultMetricsConfig().ServicebusQueueActiveMessages
+	require.NoError(t, cfg.Validate())
+
+	cfg.EnabledAttributes = []ServicebusQueueActiveMessagesMetricAttributeKey{"invalid"}
+	require.ErrorContains(t, cfg.Validate(), "metric servicebus.queue.active_messages doesn't have an attribute invalid, valid attributes: [queue]")
+
+	cfg = DefaultMetricsConfig().ServicebusQueueActiveMessages
+	cfg.AggregationStrategy = "invalid"
+	require.ErrorContains(t, cfg.Validate(), "invalid aggregation strategy")
+}
+
+func TestServicebusQueueCurrentSizeMetricsConfig_Validate(t *testing.T) {
+	cfg := DefaultMetricsConfig().ServicebusQueueCurrentSize
+	require.NoError(t, cfg.Validate())
+
+	cfg.EnabledAttributes = []ServicebusQueueCurrentSizeMetricAttributeKey{"invalid"}
+	require.ErrorContains(t, cfg.Validate(), "metric servicebus.queue.current_size doesn't have an attribute invalid, valid attributes: [queue]")
+
+	cfg = DefaultMetricsConfig().ServicebusQueueCurrentSize
+	cfg.AggregationStrategy = "invalid"
+	require.ErrorContains(t, cfg.Validate(), "invalid aggregation strategy")
+}
+
+func TestServicebusQueueDeadletterMessagesMetricsConfig_Validate(t *testing.T) {
+	cfg := DefaultMetricsConfig().ServicebusQueueDeadletterMessages
+	require.NoError(t, cfg.Validate())
+
+	cfg.EnabledAttributes = []ServicebusQueueDeadletterMessagesMetricAttributeKey{"invalid"}
+	require.ErrorContains(t, cfg.Validate(), "metric servicebus.queue.deadletter_messages doesn't have an attribute invalid, valid attributes: [queue]")
+
+	cfg = DefaultMetricsConfig().ServicebusQueueDeadletterMessages
+	cfg.AggregationStrategy = "invalid"
+	require.ErrorContains(t, cfg.Validate(), "invalid aggregation strategy")
+}
+
+func TestServicebusQueueMaxSizeMetricsConfig_Validate(t *testing.T) {
+	cfg := DefaultMetricsConfig().ServicebusQueueMaxSize
+	require.NoError(t, cfg.Validate())
+
+	cfg.EnabledAttributes = []ServicebusQueueMaxSizeMetricAttributeKey{"invalid"}
+	require.ErrorContains(t, cfg.Validate(), "metric servicebus.queue.max_size doesn't have an attribute invalid, valid attributes: [queue]")
+
+	cfg = DefaultMetricsConfig().ServicebusQueueMaxSize
+	cfg.AggregationStrategy = "invalid"
+	require.ErrorContains(t, cfg.Validate(), "invalid aggregation strategy")
+}
+
+func TestServicebusQueueScheduledMessagesMetricsConfig_Validate(t *testing.T) {
+	cfg := DefaultMetricsConfig().ServicebusQueueScheduledMessages
+	require.NoError(t, cfg.Validate())
+
+	cfg.EnabledAttributes = []ServicebusQueueScheduledMessagesMetricAttributeKey{"invalid"}
+	require.ErrorContains(t, cfg.Validate(), "metric servicebus.queue.scheduled_messages doesn't have an attribute invalid, valid attributes: [queue]")
+
+	cfg = DefaultMetricsConfig().ServicebusQueueScheduledMessages
+	cfg.AggregationStrategy = "invalid"
+	require.ErrorContains(t, cfg.Validate(), "invalid aggregation strategy")
+}
+
+func TestServicebusTopicCurrentSizeMetricsConfig_Validate(t *testing.T) {
+	cfg := DefaultMetricsConfig().ServicebusTopicCurrentSize
+	require.NoError(t, cfg.Validate())
+
+	cfg.EnabledAttributes = []ServicebusTopicCurrentSizeMetricAttributeKey{"invalid"}
+	require.ErrorContains(t, cfg.Validate(), "metric servicebus.topic.current_size doesn't have an attribute invalid, valid attributes: [topic]")
+
+	cfg = DefaultMetricsConfig().ServicebusTopicCurrentSize
+	cfg.AggregationStrategy = "invalid"
+	require.ErrorContains(t, cfg.Validate(), "invalid aggregation strategy")
+}
+
+func TestServicebusTopicMaxSizeMetricsConfig_Validate(t *testing.T) {
+	cfg := DefaultMetricsConfig().ServicebusTopicMaxSize
+	require.NoError(t, cfg.Validate())
+
+	cfg.EnabledAttributes = []ServicebusTopicMaxSizeMetricAttributeKey{"invalid"}
+	require.ErrorContains(t, cfg.Validate(), "metric servicebus.topic.max_size doesn't have an attribute invalid, valid attributes: [topic]")
+
+	cfg = DefaultMetricsConfig().ServicebusTopicMaxSize
+	cfg.AggregationStrategy = "invalid"
+	require.ErrorContains(t, cfg.Validate(), "invalid aggregation strategy")
+}
+
+func TestServicebusTopicScheduledMessagesMetricsConfig_Validate(t *testing.T) {
+	cfg := DefaultMetricsConfig().ServicebusTopicScheduledMessages
+	require.NoError(t, cfg.Validate())
+
+	cfg.EnabledAttributes = []ServicebusTopicScheduledMessagesMetricAttributeKey{"invalid"}
+	require.ErrorContains(t, cfg.Validate(), "metric servicebus.topic.scheduled_messages doesn't have an attribute invalid, valid attributes: [topic]")
+
+	cfg = DefaultMetricsConfig().ServicebusTopicScheduledMessages
+	cfg.AggregationStrategy = "invalid"
+	require.ErrorContains(t, cfg.Validate(), "invalid aggregation strategy")
+}
+
+func TestServicebusTopicSubscriptionActiveMessagesMetricsConfig_Validate(t *testing.T) {
+	cfg := DefaultMetricsConfig().ServicebusTopicSubscriptionActiveMessages
+	require.NoError(t, cfg.Validate())
+
+	cfg.EnabledAttributes = []ServicebusTopicSubscriptionActiveMessagesMetricAttributeKey{"invalid"}
+	require.ErrorContains(t, cfg.Validate(), "metric servicebus.topic.subscription.active_messages doesn't have an attribute invalid, valid attributes: [topic, subscription]")
+
+	cfg = DefaultMetricsConfig().ServicebusTopicSubscriptionActiveMessages
+	cfg.AggregationStrategy = "invalid"
+	require.ErrorContains(t, cfg.Validate(), "invalid aggregation strategy")
+}
+
+func TestServicebusTopicSubscriptionDeadletterMessagesMetricsConfig_Validate(t *testing.T) {
+	cfg := DefaultMetricsConfig().ServicebusTopicSubscriptionDeadletterMessages
+	require.NoError(t, cfg.Validate())
+
+	cfg.EnabledAttributes = []ServicebusTopicSubscriptionDeadletterMessagesMetricAttributeKey{"invalid"}
+	require.ErrorContains(t, cfg.Validate(), "metric servicebus.topic.subscription.deadletter_messages doesn't have an attribute invalid, valid attributes: [topic, subscription]")
+
+	cfg = DefaultMetricsConfig().ServicebusTopicSubscriptionDeadletterMessages
+	cfg.AggregationStrategy = "invalid"
+	require.ErrorContains(t, cfg.Validate(), "invalid aggregation strategy")
 }
 
 func loadMetricsBuilderConfig(t *testing.T, name string) MetricsBuilderConfig {
@@ -76,8 +276,8 @@ func loadMetricsBuilderConfig(t *testing.T, name string) MetricsBuilderConfig {
 	require.NoError(t, err)
 	sub, err := cm.Sub(name)
 	require.NoError(t, err)
-	cfg := DefaultMetricsBuilderConfig()
-	require.NoError(t, sub.Unmarshal(&cfg))
+	cfg := NewDefaultMetricsBuilderConfig()
+	require.NoError(t, sub.Unmarshal(&cfg, confmap.WithIgnoreUnused()))
 	return cfg
 }
 
