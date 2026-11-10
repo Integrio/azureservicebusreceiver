@@ -1,4 +1,4 @@
-﻿package azureservicebusreceiver
+package azureservicebusreceiver
 
 import (
 	"errors"
