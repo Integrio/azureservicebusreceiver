@@ -56,5 +56,5 @@ func (cfg *Config) Validate() (err error) {
 		return fmt.Errorf("authentication %v is not supported. supported authentications include [%v,%v,%v,%v]", cfg.Authentication, servicePrincipal, managedIdentity, defaultCredentials, connectionString)
 	}
 
-	return nil
+	return err
 }

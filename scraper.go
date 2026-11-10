@@ -43,15 +43,15 @@ func newScraper(logger *zap.Logger, cfg *Config, settings receiver.Settings) *se
 func (s *serviceBusScraper) start(_ context.Context, _ component.Host) (err error) {
 	if s.cfg.Authentication == connectionString {
 		s.client, err = admin.NewClientFromConnectionString(s.cfg.ConnectionString, nil)
-	} else {
-		cred, err := getAzCredential(s.cfg)
-		if err != nil {
-			return err
-		}
-		s.client, err = admin.NewClient(s.cfg.NamespaceFqdn, cred, nil)
+		return err
 	}
 
-	return nil
+	cred, err := getAzCredential(s.cfg)
+	if err != nil {
+		return err
+	}
+	s.client, err = admin.NewClient(s.cfg.NamespaceFqdn, cred, nil)
+	return err
 }
 
 func getAzCredential(cfg *Config) (azcore.TokenCredential, error) {
